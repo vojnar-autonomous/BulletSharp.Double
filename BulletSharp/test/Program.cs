@@ -62,6 +62,9 @@ namespace BulletSharpTest
 
             GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced);
             GC.WaitForPendingFinalizers();
+            // Finalization only unblocks collection; a second pass is needed
+            // to actually reclaim the finalized objects before checking them.
+            GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced);
 
             TestWeakRefs();
             disposeQueue.Clear();
@@ -125,6 +128,9 @@ namespace BulletSharpTest
 
             GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced);
             GC.WaitForPendingFinalizers();
+            // Finalization only unblocks collection; a second pass is needed
+            // to actually reclaim the finalized objects before checking them.
+            GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced);
 
             TestWeakRefs();
             disposeQueue.Clear();
@@ -215,6 +221,9 @@ namespace BulletSharpTest
 
             GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced);
             GC.WaitForPendingFinalizers();
+            // Finalization only unblocks collection; a second pass is needed
+            // to actually reclaim the finalized objects before checking them.
+            GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced);
 
             TestWeakRefs();
             disposeQueue.Clear();
@@ -281,6 +290,8 @@ namespace BulletSharpTest
 
         static void Main(string[] args)
         {
+            Console.WriteLine("Tracker enabled: " + (BulletObjectTracker.Current != null)); 
+
             TestAxisSweepOverlapCallback();
             TestGCCollection();
             TestSoftBody();

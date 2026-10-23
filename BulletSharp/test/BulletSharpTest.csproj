@@ -21,6 +21,7 @@
     <BootstrapperEnabled>true</BootstrapperEnabled>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
     <StartupObject>BulletSharpTest.Program</StartupObject>
+    <TieredCompilation>false</TieredCompilation>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="BulletSharp">

@@ -3,3 +3,16 @@ bin
 packages
 *.suo
 *.user
+
+*.patch
+
+# Visual Studio
+.vs/
+*.VC.db
+*.VC.VC.opendb
+
+# CMake build output (e.g. libbulletc/build)
+build/
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake

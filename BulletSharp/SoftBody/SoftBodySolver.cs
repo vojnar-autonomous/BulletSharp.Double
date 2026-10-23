@@ -65,7 +65,7 @@ namespace BulletSharp.SoftBody
 			get { return btSoftBodySolver_getSolverType(Native); }
 		}
 		*/
-		public double TimeScale => btSoftBodySolver_getTimeScale(Native);
+		public float TimeScale => btSoftBodySolver_getTimeScale(Native);
 
 		protected override void Dispose(bool disposing)
 		{

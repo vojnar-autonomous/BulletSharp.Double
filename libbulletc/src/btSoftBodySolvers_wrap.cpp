@@ -39,7 +39,7 @@ void btSoftBodySolver_optimize(btSoftBodySolver* obj, btAlignedObjectArray_btSof
 	obj->optimize(*softBodies, forceUpdate);
 }
 
-void btSoftBodySolver_predictMotion(btSoftBodySolver* obj, float solverdt)
+void btSoftBodySolver_predictMotion(btSoftBodySolver* obj, btScalar solverdt)
 {
 	obj->predictMotion(solverdt);
 }
@@ -66,7 +66,7 @@ void btSoftBodySolver_setNumberOfVelocityIterations(btSoftBodySolver* obj, int i
 	obj->setNumberOfVelocityIterations(iterations);
 }
 
-void btSoftBodySolver_solveConstraints(btSoftBodySolver* obj, float solverdt)
+void btSoftBodySolver_solveConstraints(btSoftBodySolver* obj, btScalar solverdt)
 {
 	obj->solveConstraints(solverdt);
 }

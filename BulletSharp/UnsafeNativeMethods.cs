@@ -6366,7 +6366,7 @@ namespace BulletSharp
 		[DllImport(Native.Dll, CallingConvention = Native.Conv)]
 		public static extern int btSoftBodySolver_getNumberOfVelocityIterations(IntPtr obj);
 		[DllImport(Native.Dll, CallingConvention = Native.Conv)]
-		public static extern double btSoftBodySolver_getTimeScale(IntPtr obj);
+		public static extern float btSoftBodySolver_getTimeScale(IntPtr obj);
 		[DllImport(Native.Dll, CallingConvention = Native.Conv)]
 		public static extern void btSoftBodySolver_optimize(IntPtr obj, IntPtr softBodies, bool forceUpdate);
 		[DllImport(Native.Dll, CallingConvention = Native.Conv)]

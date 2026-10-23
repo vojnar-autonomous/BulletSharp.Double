@@ -24,7 +24,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="BulletSharp">
-      <HintPath>..\bin\Debug\netstandard2.1\BulletSharp.dll</HintPath>
+      <HintPath>..\bin\$(Configuration)\netstandard2.1\BulletSharp.dll</HintPath>
     </Reference>
   </ItemGroup>
   <ItemGroup>

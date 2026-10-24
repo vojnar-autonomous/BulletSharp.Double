@@ -7,19 +7,79 @@ on:
     branches: [ main ]
 
 jobs:
-  build:
-
+  # Builds libbulletc (the native C ABI layer) once, independent of the
+  # .NET Debug/Release split below -- the only thing that differs between
+  # Debug/Release on the C# side is the BULLET_OBJECT_TRACKING define,
+  # which doesn't touch the native build at all.
+  build-native:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v2
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v3
-      with:
-        dotnet-version: 8.0.x
-    - name: Install dependencies
-      run: dotnet restore BulletSharp.Double.sln
-    - name: Build
-      run: dotnet build --configuration Release --no-restore BulletSharp.Double.sln
-    - name: Test
-      run: dotnet test --no-restore --verbosity normal BulletSharp/test/BulletSharpTest.csproj
+      - name: Checkout (with bullet3 submodule)
+        uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - name: Configure (CMake)
+        run: cmake -S libbulletc -B libbulletc/build -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build libbulletc
+        run: cmake --build libbulletc/build --config Release --parallel
+
+      - name: Upload libbulletc.so
+        uses: actions/upload-artifact@v4
+        with:
+          name: libbulletc-linux-x64
+          path: libbulletc/build/libbulletc.so
+          retention-days: 7
+
+  # Builds and tests the C# side per configuration, so a Debug-only or
+  # Release-only regression shows up as its own failing matrix leg instead
+  # of being silently skipped (previously only Release was ever built).
+  dotnet:
+    runs-on: ubuntu-latest
+    needs: build-native
+    strategy:
+      fail-fast: false
+      matrix:
+        configuration: [ Debug, Release ]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+          cache: true
+          cache-dependency-path: '**/*.csproj'
+
+      - name: Download libbulletc.so
+        uses: actions/download-artifact@v4
+        with:
+          name: libbulletc-linux-x64
+          path: native
+
+      - name: Restore
+        run: dotnet restore BulletSharp.Double.sln
+
+      - name: Build
+        run: dotnet build --configuration ${{ matrix.configuration }} --no-restore BulletSharp.Double.sln
+
+      # DllImport("libbulletc") on Linux resolves libbulletc.so via the loader
+      # search path; LD_LIBRARY_PATH is simplest/robust across TFMs here
+      # instead of guessing every bin/<config>/<tfm>/ output path to copy into.
+      - name: Test
+        env:
+          LD_LIBRARY_PATH: ${{ github.workspace }}/native
+        run: dotnet test --configuration ${{ matrix.configuration }} --no-build --verbosity normal --logger trx BulletSharp/test/BulletSharpTest.csproj
+
+      - name: Upload test results on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-${{ matrix.configuration }}
+          path: BulletSharp/test/TestResults/*.trx
+          retention-days: 7
+          if-no-files-found: ignore

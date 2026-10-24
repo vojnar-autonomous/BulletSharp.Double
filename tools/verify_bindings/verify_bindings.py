@@ -472,6 +472,8 @@ def extract_wrap_cpp(idx, cpp_path):
                 "return": rret,
                 "value_type": extra,  # only set for 'setter': RHS expression's canonical type
                 "params": rparams,
+                "line": ref.location.line if ref.location.file else None,
+                "bullet3_file": os.path.basename(ref.location.file.name) if ref.location.file else None,
             })
 
         out[node.spelling] = {
@@ -479,6 +481,7 @@ def extract_wrap_cpp(idx, cpp_path):
             "params": params,
             "calls": calls,
             "file": fname,
+            "line": node.location.line,
         }
     return out, [d.spelling for d in errors]
 
@@ -525,6 +528,134 @@ def scalar_compare(cpp_canon, cs_type):
     if cpp_cat != "scalar" or cs_cat != "scalar":
         return "SKIP", cpp_norm, cs_norm
     return ("MATCH" if cpp_norm == cs_norm else "MISMATCH"), cpp_norm, cs_norm
+
+
+def _esc(s):
+    return (str(s) if s is not None else "").replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;")
+
+
+def generate_html_report(rows, out_path):
+    """Writes a single self-contained HTML file grouping the rows by status,
+    with file:line references, so the report can be opened directly in a
+    browser instead of read as raw CSV."""
+
+    def loc(file_, line_):
+        if not file_:
+            return ""
+        return f"{file_}:{line_}" if line_ not in ("", None) else file_
+
+    groups = [
+        ("native_mismatch", "Native scalar mismatch (wrap vs bullet3)", "sev-high",
+         [r for r in rows if r["native_status"] == "SCALAR_MISMATCH"]),
+        ("cs_mismatch", "C# scalar mismatch (wrap vs P/Invoke)", "sev-high",
+         [r for r in rows if r["cs_status"] == "SCALAR_MISMATCH"]),
+        ("suspicious", "Suspicious pointer-class (manual review)", "sev-med",
+         [r for r in rows if r["native_suspicious_pointer_class"]]),
+        ("enum", "Touches an enum (informational)", "sev-info",
+         [r for r in rows if r["native_enum_note"]]),
+        ("unresolved", "Unresolved call site (manual review)", "sev-low",
+         [r for r in rows if r["native_status"] == "UNRESOLVED"]),
+        ("no_cs", "No C# counterpart found", "sev-low",
+         [r for r in rows if r["cs_status"] == "NO_CSHARP_COUNTERPART"]),
+        ("ok", "Resolved, no issues", "sev-ok",
+         [r for r in rows if r["native_status"] in ("RESOLVED", "RESOLVED_AMBIGUOUS")
+          and r["native_status"] != "SCALAR_MISMATCH"
+          and not r["native_suspicious_pointer_class"]
+          and r["cs_status"] in ("OK",)]),
+    ]
+
+    total = len(rows)
+    counts_html = "".join(
+        f'<div class="stat {cls}"><span class="n">{len(items)}</span><span class="l">{_esc(title)}</span></div>'
+        for _key, title, cls, items in groups
+    )
+
+    sections_html = []
+    for key, title, cls, items in groups:
+        open_attr = " open" if cls in ("sev-high", "sev-med") and items else ""
+        body_rows = []
+        for r in items:
+            issue = " | ".join(
+                x for x in [r["native_mismatches"], r["native_suspicious_pointer_class"],
+                            r["native_enum_note"], r["cs_mismatches"]] if x
+            )
+            wrap_loc = loc(r["file"], r["line"])
+            b3_loc = loc(r["bullet3_file"], r["bullet3_line"])
+            b3_target = ".".join(x for x in [r["bullet3_class"], r["bullet3_method"]] if x)
+            body_rows.append(
+                "<tr>"
+                f'<td class="mono">{_esc(wrap_loc)}</td>'
+                f'<td class="mono">{_esc(r["wrap_function"])}</td>'
+                f'<td class="mono">{_esc(b3_loc)}</td>'
+                f'<td class="mono">{_esc(b3_target)}</td>'
+                f'<td>{_esc(issue)}</td>'
+                "</tr>"
+            )
+        sections_html.append(
+            f'<details class="group {cls}"{open_attr} data-group="{key}">'
+            f'<summary>{_esc(title)} <span class="count">({len(items)})</span></summary>'
+            '<table><thead><tr>'
+            "<th>wrap file:line</th><th>wrap function</th><th>bullet3 file:line</th>"
+            "<th>bullet3 target</th><th>issue / detail</th>"
+            "</tr></thead><tbody>"
+            + ("".join(body_rows) if body_rows else '<tr><td colspan="5" class="empty">none</td></tr>')
+            + "</tbody></table></details>"
+        )
+
+    html = f"""<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<title>verify_bindings report</title>
+<style>
+  body {{ font-family: -apple-system, Segoe UI, Arial, sans-serif; margin: 0; padding: 1.5rem 2rem;
+         background: #0f1115; color: #e6e6e6; }}
+  h1 {{ font-size: 1.3rem; margin-bottom: 0.25rem; }}
+  .sub {{ color: #9aa0a6; margin-bottom: 1.2rem; font-size: 0.9rem; }}
+  .stats {{ display: flex; gap: 0.6rem; flex-wrap: wrap; margin-bottom: 1.4rem; }}
+  .stat {{ border-radius: 8px; padding: 0.5rem 0.9rem; min-width: 110px; }}
+  .stat .n {{ display: block; font-size: 1.4rem; font-weight: 700; }}
+  .stat .l {{ display: block; font-size: 0.72rem; color: #c9c9c9; }}
+  .sev-high {{ background: #3a1414; }}
+  .sev-med {{ background: #3a2c10; }}
+  .sev-info {{ background: #122a3a; }}
+  .sev-low {{ background: #222; }}
+  .sev-ok {{ background: #123a1c; }}
+  details.group {{ margin-bottom: 0.7rem; border: 1px solid #2a2d33; border-radius: 8px; overflow: hidden; }}
+  summary {{ cursor: pointer; padding: 0.6rem 1rem; font-weight: 600; background: #1a1c20; }}
+  summary .count {{ color: #9aa0a6; font-weight: 400; }}
+  table {{ width: 100%; border-collapse: collapse; font-size: 0.85rem; }}
+  th, td {{ text-align: left; padding: 0.35rem 0.8rem; border-bottom: 1px solid #22242a; }}
+  th {{ color: #9aa0a6; font-weight: 600; position: sticky; top: 0; background: #14161a; }}
+  tr:hover td {{ background: #1a1c20; }}
+  .mono {{ font-family: SFMono-Regular, Consolas, monospace; white-space: nowrap; }}
+  .empty {{ color: #666; font-style: italic; }}
+  input#filter {{ width: 100%; max-width: 420px; padding: 0.4rem 0.6rem; margin-bottom: 1rem;
+                  border-radius: 6px; border: 1px solid #333; background: #1a1c20; color: #eee; }}
+</style></head>
+<body>
+<h1>verify_bindings report</h1>
+<div class="sub">{total} wrap functions analyzed &middot; bullet3 &harr; libbulletc &harr; C# signature check</div>
+<div class="stats">{counts_html}</div>
+<input id="filter" type="text" placeholder="Filter by function / file / class name...">
+{"".join(sections_html)}
+<script>
+  var input = document.getElementById('filter');
+  input.addEventListener('input', function () {{
+    var q = input.value.toLowerCase();
+    document.querySelectorAll('details.group').forEach(function (grp) {{
+      var any = false;
+      grp.querySelectorAll('tbody tr').forEach(function (row) {{
+        var hit = !q || row.textContent.toLowerCase().indexOf(q) !== -1;
+        row.style.display = hit ? '' : 'none';
+        if (hit) any = true;
+      }});
+      if (q) grp.open = any;
+    }});
+  }});
+</script>
+</body></html>"""
+
+    with open(out_path, "w", encoding="utf-8") as f:
+        f.write(html)
 
 
 def main():
@@ -697,9 +828,12 @@ def main():
 
             rows.append({
                 "file": wrap["file"],
+                "line": wrap.get("line", ""),
                 "wrap_function": fn_name,
                 "wrap_return": wrap["return"],
                 "wrap_params": "; ".join(f"{n}:{t}" for n, t in wrap["params"]),
+                "bullet3_file": primary.get("bullet3_file", "") if primary else "",
+                "bullet3_line": primary.get("line", "") if primary else "",
                 "bullet3_class": bullet3_class,
                 "bullet3_method": bullet3_method,
                 "bullet3_return": bullet3_return,
@@ -716,6 +850,9 @@ def main():
         w.writeheader()
         for r in rows:
             w.writerow(r)
+
+    html_out = os.path.splitext(args.out)[0] + ".html"
+    generate_html_report(rows, html_out)
 
     total = len(rows)
     native_mismatch_n = sum(1 for r in rows if r["native_status"] == "SCALAR_MISMATCH")
@@ -737,6 +874,7 @@ def main():
         for fn, e in parse_errors:
             print(f"  {fn}: {e}")
     print(f"\nFull report written to {args.out}")
+    print(f"Human-readable HTML report written to {html_out}")
 
 
 if __name__ == "__main__":

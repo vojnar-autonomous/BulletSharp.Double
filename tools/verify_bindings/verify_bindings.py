@@ -26,8 +26,10 @@ map but not flagged as mismatches.
 Usage:
     python3 verify_bindings.py [--out report.csv] [--full]
 
-Requires: pip install --break-system-packages 'clang==18.1.8' (must match the
-major version of the system libclang; adjust LIBCLANG_PATH below if needed).
+Requires: pip install 'clang==18.1.8' (pin to your system libclang's major
+version) plus a native libclang -- see README.md for Linux/macOS/Windows
+setup. Runs cross-platform; libclang is located automatically by
+find_libclang() below, or override via the LIBCLANG_PATH env var.
 """
 import argparse
 import csv
@@ -42,7 +44,50 @@ import clang.cindex as ci
 # Configuration
 # ---------------------------------------------------------------------------
 
-LIBCLANG_PATH = "/usr/lib/x86_64-linux-gnu/libclang-18.so.18"
+def find_libclang():
+    """Locates the libclang shared library across Linux, macOS and Windows.
+
+    Checked in order: the LIBCLANG_PATH env var (set this if none of the
+    guesses below fit your machine), then a list of common install
+    locations per platform, then clang.cindex's own default search (which
+    works out of the box if `pip install libclang` put its bundled native
+    library somewhere ctypes can already find it)."""
+    env = os.environ.get("LIBCLANG_PATH")
+    if env and os.path.isfile(env):
+        return env
+
+    candidates = []
+    if sys.platform.startswith("linux"):
+        candidates += glob.glob("/usr/lib/x86_64-linux-gnu/libclang-*.so*")
+        candidates += glob.glob("/usr/lib/llvm-*/lib/libclang*.so*")
+        candidates += glob.glob("/usr/lib/libclang*.so*")
+    elif sys.platform == "darwin":
+        candidates += glob.glob("/Library/Developer/CommandLineTools/usr/lib/libclang.dylib")
+        candidates += glob.glob("/opt/homebrew/opt/llvm*/lib/libclang.dylib")
+        candidates += glob.glob("/usr/local/opt/llvm*/lib/libclang.dylib")
+        candidates += glob.glob("/Applications/Xcode.app/Contents/Developer/Toolchains/*.xctoolchain/usr/lib/libclang.dylib")
+    elif sys.platform == "win32":
+        # The `clang` PyPI package (pip install libclang) bundles a DLL
+        # under its own package directory -- look there first since it
+        # needs no separate LLVM install.
+        try:
+            import clang
+            candidates += glob.glob(os.path.join(os.path.dirname(clang.__file__), "native", "libclang.dll"))
+        except ImportError:
+            pass
+        candidates += glob.glob(r"C:\Program Files\LLVM\bin\libclang.dll")
+        candidates += glob.glob(r"C:\Program Files (x86)\LLVM\bin\libclang.dll")
+        # Visual Studio ships its own copy alongside the MSVC toolchain.
+        candidates += glob.glob(r"C:\Program Files*\Microsoft Visual Studio\*\*\VC\Tools\Llvm\**\libclang.dll", recursive=True) \
+            if hasattr(glob, "glob") else []
+
+    for c in candidates:
+        if c and os.path.isfile(c):
+            return c
+    return None  # let clang.cindex try its own default search
+
+
+LIBCLANG_PATH = find_libclang()
 
 REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 LIBBULLETC_SRC = os.path.join(REPO_ROOT, "libbulletc", "src")
@@ -76,7 +121,15 @@ CPP_SCALAR_MAP = {
     "unsigned int": "uint32",
     "short": "int16",
     "unsigned short": "uint16",
-    "long": "int64",       # bullet3/libbulletc don't rely on LP64 vs LLP64 edge cases here
+    # NOTE: bare `long`'s actual width is platform-dependent (64-bit on
+    # Linux/macOS's LP64, 32-bit on Windows's LLP64) -- clang resolves it
+    # per the host platform it's run on, so this fixed int64 mapping is only
+    # correct when running on a 64-bit Linux/macOS host. bullet3/libbulletc
+    # don't appear to use bare `long` in any signature this tool currently
+    # resolves (size_t-typed params canonicalize to `unsigned long long` on
+    # Windows anyway), so this hasn't mattered in practice -- but if a
+    # `long`-mismatch report ever looks wrong on Windows, this is why.
+    "long": "int64",
     "unsigned long": "uint64",
     "long long": "int64",
     "unsigned long long": "uint64",
@@ -479,7 +532,13 @@ def main():
     ap.add_argument("--out", default=os.path.join(os.path.dirname(__file__), "binding_report.csv"))
     args = ap.parse_args()
 
-    ci.Config.set_library_file(LIBCLANG_PATH)
+    if LIBCLANG_PATH:
+        ci.Config.set_library_file(LIBCLANG_PATH)
+        print(f"Using libclang: {LIBCLANG_PATH}", file=sys.stderr)
+    else:
+        print("No libclang found by the built-in search; letting clang.cindex "
+              "try its own default lookup (set the LIBCLANG_PATH env var if "
+              "this fails).", file=sys.stderr)
     idx = ci.Index.create()
 
     print("Building bullet3 class hierarchy...", file=sys.stderr)

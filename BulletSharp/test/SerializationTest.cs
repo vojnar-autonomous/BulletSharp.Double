@@ -22,14 +22,14 @@ namespace BulletSharpTest
             var fileLoader = new BulletWorldImporter(_world);
             var objects = _world.CollisionObjectArray;
 
-            Assert.True(LoadFile(fileLoader, "data\\bsp.bullet"));
+            Assert.True(LoadFile(fileLoader, "data/bsp.bullet"));
             Assert.AreEqual(127, objects.Count);
             Assert.AreEqual(127, fileLoader.NumCollisionShapes);
             Assert.True(objects.All(o => o.CollisionShape is ConvexHullShape));
             fileLoader.DeleteAllData();
             Assert.AreEqual(0, objects.Count);
 
-            Assert.True(LoadFile(fileLoader, "data\\concaveCompound.bullet"));
+            Assert.True(LoadFile(fileLoader, "data/concaveCompound.bullet"));
             Assert.AreEqual(1, fileLoader.NumBvhs);
             Assert.AreEqual(6, fileLoader.NumCollisionShapes);
             Assert.AreEqual(11, objects.Count);
@@ -42,50 +42,50 @@ namespace BulletSharpTest
             fileLoader.DeleteAllData();
             Assert.AreEqual(0, objects.Count);
 
-            Assert.True(LoadFile(fileLoader, "data\\constraints.bullet"));
+            Assert.True(LoadFile(fileLoader, "data/constraints.bullet"));
             Assert.AreEqual(10, fileLoader.NumConstraints);
             Assert.AreEqual(10, _world.NumConstraints);
             Assert.AreEqual(17, objects.Count);
             fileLoader.DeleteAllData();
             Assert.AreEqual(0, objects.Count);
 
-            Assert.True(LoadFile(fileLoader, "data\\convex_decomposition.bullet"));
+            Assert.True(LoadFile(fileLoader, "data/convex_decomposition.bullet"));
             fileLoader.DeleteAllData();
             Assert.AreEqual(0, objects.Count);
 
-            Assert.True(LoadFile(fileLoader, "data\\cylinders.bullet"));
+            Assert.True(LoadFile(fileLoader, "data/cylinders.bullet"));
             fileLoader.DeleteAllData();
             Assert.AreEqual(0, objects.Count);
             /*
-            Assert.True(LoadFile(fileLoader, "data\\multibody.bullet"));
+            Assert.True(LoadFile(fileLoader, "data/multibody.bullet"));
             fileLoader.DeleteAllData();
             Assert.AreEqual(0, objects.Count);
 
-            Assert.True(LoadFile(fileLoader, "data\\r2d2_multibody.bullet"));
+            Assert.True(LoadFile(fileLoader, "data/r2d2_multibody.bullet"));
             fileLoader.DeleteAllData();
             Assert.AreEqual(0, objects.Count);
             */
-            Assert.True(LoadFile(fileLoader, "data\\ragdoll_6dof.bullet"));
+            Assert.True(LoadFile(fileLoader, "data/ragdoll_6dof.bullet"));
             fileLoader.DeleteAllData();
             Assert.AreEqual(0, objects.Count);
 
-            Assert.True(LoadFile(fileLoader, "data\\ragdoll_conetwist.bullet"));
+            Assert.True(LoadFile(fileLoader, "data/ragdoll_conetwist.bullet"));
             fileLoader.DeleteAllData();
             Assert.AreEqual(0, objects.Count);
 
-            Assert.True(LoadFile(fileLoader, "data\\slope.bullet"));
+            Assert.True(LoadFile(fileLoader, "data/slope.bullet"));
             fileLoader.DeleteAllData();
             Assert.AreEqual(0, objects.Count);
 
-            Assert.True(LoadFile(fileLoader, "data\\spider.bullet"));
+            Assert.True(LoadFile(fileLoader, "data/spider.bullet"));
             fileLoader.DeleteAllData();
             Assert.AreEqual(0, objects.Count);
             /*
-            Assert.True(LoadFile(fileLoader, "data\\testFile.bullet"));
+            Assert.True(LoadFile(fileLoader, "data/testFile.bullet"));
             fileLoader.DeleteAllData();
             Assert.AreEqual(0, objects.Count);
             */
-            Assert.True(LoadFile(fileLoader, "data\\testFileFracture.bullet"));
+            Assert.True(LoadFile(fileLoader, "data/testFileFracture.bullet"));
             fileLoader.DeleteAllData();
             Assert.AreEqual(0, objects.Count);
         }

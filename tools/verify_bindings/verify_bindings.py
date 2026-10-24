@@ -93,9 +93,9 @@ REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 LIBBULLETC_SRC = os.path.join(REPO_ROOT, "libbulletc", "src")
 CSHARP_FILE = os.path.join(REPO_ROOT, "BulletSharp", "UnsafeNativeMethods.cs")
 
-# bullet3 is checked out as a sibling repo (../bullet3 relative to this fork),
-# same layout libbulletc's own CMakeLists.txt expects.
-BULLET3_ROOT = os.path.abspath(os.path.join(REPO_ROOT, "..", "bullet3"))
+# bullet3 is a git submodule at <repo-root>/bullet3, same layout
+# libbulletc's own CMakeLists.txt expects (one of its FIND_PATH candidates).
+BULLET3_ROOT = os.path.join(REPO_ROOT, "bullet3")
 
 CLANG_ARGS = [
     "-x", "c++", "-std=c++14", "-DBT_USE_DOUBLE_PRECISION",

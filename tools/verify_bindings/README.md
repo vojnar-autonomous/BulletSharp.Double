@@ -24,9 +24,9 @@ flagged as mismatches.
 
 ## Requirements
 
-Assumes bullet3 is checked out as a sibling directory (`../../../bullet3`
-relative to this script, i.e. next to this fork's own repo root -- same
-layout `libbulletc`'s own CMakeLists.txt expects).
+Assumes bullet3 is present at `<repo-root>/bullet3` (a git submodule --
+run `git submodule update --init` if it's empty), same layout
+`libbulletc`'s own CMakeLists.txt expects.
 
 Runs on Linux, macOS and Windows. You need two things, and **their major
 versions must match each other** -- a mismatch fails loudly at startup

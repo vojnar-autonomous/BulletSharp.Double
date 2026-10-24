@@ -157,6 +157,23 @@ CS_SCALAR_MAP = {
 }
 
 
+def classify_cpp_kind(canonical_spelling):
+    """Returns 'ref' / 'ptr' / 'value' from a clang canonical type spelling.
+
+    A canonical spelling always puts the outermost pointer/reference
+    qualifier last (e.g. "const btVector3 &", "btVector3 *", "const
+    btVector3 * &" -- a pointer passed by reference, which is a reference
+    at the top level regardless of what it points to), so checking the
+    trailing character after stripping whitespace is enough; no need to
+    walk nested pointer-to-pointer levels for this classification."""
+    s = canonical_spelling.strip()
+    if s.endswith("&"):
+        return "ref"
+    if s.endswith("*"):
+        return "ptr"
+    return "value"
+
+
 def classify_cpp_type(canonical_spelling):
     """Returns (category, normalized_name) for a clang canonical type spelling."""
     s = canonical_spelling.strip()
@@ -559,16 +576,22 @@ def compare_cpp_types(wrap_type_str, bullet3_type_str, hierarchy):
     """
     cat_w, norm_w = classify_cpp_type(wrap_type_str)
     cat_b, norm_b = classify_cpp_type(bullet3_type_str)
+    kind_w = classify_cpp_kind(wrap_type_str)
+    kind_b = classify_cpp_kind(bullet3_type_str)
+    # 'value' is the common case -- only annotate when a side is actually a
+    # pointer or reference, so the usual report stays uncluttered.
+    tag_w = f"{norm_w}" if kind_w == "value" else f"{norm_w}[{kind_w}]"
+    tag_b = f"{norm_b}" if kind_b == "value" else f"{norm_b}[{kind_b}]"
     scalar_msg = None
     suspicious_msg = None
     enum_note = None
     if cat_w == "scalar" and cat_b == "scalar" and norm_w != norm_b:
-        scalar_msg = f"wrap={norm_w} bullet3={norm_b}"
+        scalar_msg = f"wrap={tag_w} bullet3={tag_b}"
     if cat_w == "handle" and cat_b == "handle":
         if not pointer_classes_compatible(norm_w, norm_b, hierarchy):
-            suspicious_msg = f"wrap_class={norm_w} bullet3_class={norm_b}"
+            suspicious_msg = f"wrap_class={tag_w} bullet3_class={tag_b}"
     if cat_b == "enum" or cat_w == "enum":
-        enum_note = f"wrap={norm_w}({cat_w}) bullet3={norm_b}({cat_b})"
+        enum_note = f"wrap={tag_w}({cat_w}) bullet3={tag_b}({cat_b})"
     return scalar_msg, suspicious_msg, enum_note
 
 

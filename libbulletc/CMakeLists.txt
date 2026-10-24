@@ -28,6 +28,20 @@ OPTION(BUILD_CLSOCKET "" OFF)
 OPTION(BUILD_CPU_DEMOS "" OFF)
 OPTION(BUILD_ENET "" OFF)
 OPTION(BUILD_UNIT_TESTS "" OFF)
+
+# libbulletc only links BulletCollision/BulletDynamics/LinearMath/HACD and
+# the Serialize trio (BulletFileLoader/BulletWorldImporter/BulletXmlWorldImporter)
+# -- see TARGET_LINK_LIBRARIES below. None of these other Extras/ modules are
+# used; left at bullet3's own defaults (mostly ON) they pull in unrelated code
+# such as BulletRobotics(GUI)'s clsocket sources, which don't even compile on
+# every platform (POSIX socket/time APIs bullet3 doesn't guard for every OS).
+OPTION(BUILD_BULLET_ROBOTICS_EXTRA "" OFF)
+OPTION(BUILD_BULLET_ROBOTICS_GUI_EXTRA "" OFF)
+OPTION(BUILD_INVERSE_DYNAMIC_EXTRA "" OFF)
+OPTION(BUILD_OBJ2SDF_EXTRA "" OFF)
+OPTION(BUILD_CONVEX_DECOMPOSITION_EXTRA "" OFF)
+OPTION(BUILD_GIMPACTUTILS_EXTRA "" OFF)
+
 SET(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 # Must precede ADD_SUBDIRECTORY: bullet3 declares the same OPTION with default OFF,

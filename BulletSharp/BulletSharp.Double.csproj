@@ -3,15 +3,14 @@
   <PropertyGroup>
     <TargetFrameworks>netstandard2.1;net8.0</TargetFrameworks>
     <Version>0.12.0.0</Version>
-    <Authors>Andres Traks</Authors>
-    <Company />
+    <Authors>Vojnar Autonomous s.r.o.</Authors>
+    <Company>Vojnar Autonomous s.r.o.</Company>
     <RootNamespace>BulletSharp.Double</RootNamespace>
     <AssemblyName>BulletSharp.Double</AssemblyName>
     <PackageId>BulletSharp.Double</PackageId>
-    <PackageLicenseUrl>https://github.com/AndresTraks/BulletSharpPInvoke/blob/master/BulletSharp/license.txt</PackageLicenseUrl>
-    <PackageProjectUrl>https://andrestraks.github.io/BulletSharp/</PackageProjectUrl>
-    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-    <PackageIconUrl>https://raw.githubusercontent.com/AndresTraks/BulletSharp/gh-pages/images/bullet_logo_64x64.png</PackageIconUrl>
+    <PackageLicenseExpression>Zlib</PackageLicenseExpression>
+    <PackageProjectUrl>https://vojnarautonomous.com/</PackageProjectUrl>
+    <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
     <Description>.NET double-precision wrapper for the Bullet physics engine</Description>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
@@ -30,14 +29,6 @@
     <None Remove="demos\**" />
     <None Remove="test\**" />
     <None Remove="obj\**" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Compile Remove="Properties\AssemblyInfo.cs" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="Properties\" />
   </ItemGroup>
 
 </Project>

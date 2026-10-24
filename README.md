@@ -1,12 +1,7 @@
-# BulletSharp
-BulletSharp is a .NET wrapper for the [Bullet](https://pybullet.org/) physics library.
+# BulletSharp.Double
 
-This version uses Platform Invoke. There is also an equivalent version written in C++/CLI: https://github.com/AndresTraks/BulletSharp
-
-libbulletc is a C interface to Bullet. It compiles into a .dll or .so file that exports Bullet functions.
-
-BulletSharpPInvoke is a .NET library that proxies calls from .NET to libbulletc.
-
-The benefit of P/Invoke over C++/CLI is that it runs on all platforms that support P/Invoke into shared user-mode libraries (Windows, Unix, Mac OS). See also [Supported platforms](https://github.com/AndresTraks/BulletSharp/wiki/Supported-platforms).
-
-![.NET Core](https://github.com/AndresTraks/BulletSharpPInvoke/workflows/.NET%20Core/badge.svg)
+This is a fork of [BulletSharpPInvoke](https://github.com/AndresTraks/BulletSharpPInvoke)
+by Andres Traks, maintained by [Vojnar Autonomous](https://vojnarautonomous.com/)
+for its own robotics simulation work. It's being reworked toward a
+double-precision build (`BulletSharp.Double`), with real ABI/binding bugs
+found and fixed along the way. See [LICENSE](LICENSE) for licensing.

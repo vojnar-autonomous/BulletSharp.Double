@@ -426,6 +426,26 @@ def find_resolved_refs(node, acc, role="other"):
         find_resolved_refs(c, acc, role=role if node.kind != ci.CursorKind.CALL_EXPR else "other")
 
 
+_LOOP_KINDS = (ci.CursorKind.FOR_STMT, ci.CursorKind.WHILE_STMT, ci.CursorKind.DO_STMT)
+
+
+def _contains_loop(node):
+    """True if a loop appears anywhere in this function body.
+
+    A loop means the body processes a variable-length sequence (N tetras, N
+    triangles, ...), which is structurally not a 1:1 translation of *one*
+    bullet3 call into *one* wrap signature -- the single-call resolution
+    heuristics in find_resolved_refs/main() have no sound way to pick "the"
+    target bullet3 declaration out of a loop body full of unrelated field
+    reads and operator calls. Rather than let the arity-distance fallback
+    guess at one of them (as it used to, picking essentially an arbitrary
+    btVector3::operator- out of dozens of candidates), such functions are
+    deliberately left unresolved for manual review."""
+    if node.kind in _LOOP_KINDS:
+        return True
+    return any(_contains_loop(c) for c in node.get_children())
+
+
 def extract_wrap_cpp(idx, cpp_path):
     """Returns dict: wrap_function_name -> {
          return, params:[(name,canon)], calls:[{kind, name, class, return, params}]
@@ -443,7 +463,8 @@ def extract_wrap_cpp(idx, cpp_path):
 
         params = [(p.spelling, p.type.get_canonical().spelling) for p in node.get_arguments()]
         refs_raw = []
-        find_resolved_refs(node, refs_raw)
+        if not _contains_loop(node):
+            find_resolved_refs(node, refs_raw)
 
         calls = []
         seen = set()
@@ -487,6 +508,13 @@ def extract_wrap_cpp(idx, cpp_path):
             else:
                 rparams = []
                 rret = ""
+            # Whether this resolved target expects an implicit receiver that
+            # the wrap function's own leading parameter stands in for. True
+            # only for a genuine non-static instance method -- a static
+            # member function or free function (operator overloads included)
+            # takes every argument explicitly, so the wrap's first parameter
+            # must be compared positionally like any other, not skipped.
+            is_instance_method = (ref.kind == ci.CursorKind.CXX_METHOD and not ref.is_static_method())
             calls.append({
                 "exprkind": tag,
                 "name": ref.spelling,
@@ -494,6 +522,7 @@ def extract_wrap_cpp(idx, cpp_path):
                 "return": rret,
                 "value_type": extra,  # only set for 'setter': RHS expression's canonical type
                 "params": rparams,
+                "is_instance_method": is_instance_method,
                 "line": ref.location.line if ref.location.file else None,
                 "bullet3_file": os.path.basename(ref.location.file.name) if ref.location.file else None,
             })
@@ -810,8 +839,16 @@ def main():
                     if enum_note:
                         native_enum_notes.append(f"return: {enum_note}")
 
-                    # param type compare position-by-position (skip the leading obj param on wrap side)
-                    wrap_params_noobj = wrap["params"][1:] if wrap["params"] else []
+                    # param type compare position-by-position. Only skip the
+                    # wrap's leading obj param when the resolved target is a
+                    # genuine non-static instance method -- a static method
+                    # or free function (incl. operator overloads) takes
+                    # every argument explicitly, so nothing is implicit and
+                    # nothing should be dropped (this is what made
+                    # clusterCom2/clusterVelocity, both bullet3 `static`
+                    # methods, misalign by one position).
+                    wrap_params_noobj = (wrap["params"][1:] if primary.get("is_instance_method", True) and wrap["params"]
+                                         else wrap["params"])
                     bullet3_params = primary["params"]
                     if primary["exprkind"] == "call" and len(wrap_params_noobj) == len(bullet3_params):
                         for (wn, wt), (bn, bt) in zip(wrap_params_noobj, bullet3_params):

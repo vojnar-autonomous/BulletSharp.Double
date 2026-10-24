@@ -307,6 +307,28 @@ def extract_csharp_pinvoke(path):
     return result
 
 
+def classify_cs_gap(fn_name, csharp_names):
+    """For a wrap function with no C# P/Invoke counterpart, distinguishes two
+    very different situations by checking whether any OTHER C#-bound name
+    shares a progressively shorter underscore-prefix with this one:
+
+    - 'partial': some sibling function of the same wrap "type" (e.g. other
+      btFoo_* operations) IS bound in C# -- this one specific function was
+      probably just forgotten. Worth a look.
+    - 'whole_type': nothing starting with even the bare type name is bound
+      in C# at all -- the whole type/subsystem was never exposed, which
+      reads as a deliberate scope decision rather than an oversight.
+
+    csharp_names: iterable of all C#-bound P/Invoke names (sorted not
+    required, just needs to support fast prefix lookups)."""
+    tokens = fn_name.split("_")
+    for cut in range(len(tokens) - 1, 0, -1):
+        prefix = "_".join(tokens[:cut]) + "_"
+        if any(n.startswith(prefix) for n in csharp_names):
+            return "partial", "_".join(tokens[:cut])
+    return "whole_type", tokens[0]
+
+
 # ---------------------------------------------------------------------------
 # libbulletc wrap .h extraction (declared EXPORT signatures)
 # ---------------------------------------------------------------------------
@@ -555,8 +577,10 @@ def generate_html_report(rows, out_path):
          [r for r in rows if r["native_enum_note"]]),
         ("unresolved", "Unresolved call site (manual review)", "sev-low",
          [r for r in rows if r["native_status"] == "UNRESOLVED"]),
-        ("no_cs", "No C# counterpart found", "sev-low",
-         [r for r in rows if r["cs_status"] == "NO_CSHARP_COUNTERPART"]),
+        ("no_cs_partial", "No C# counterpart -- sibling bound, worth a look", "sev-med",
+         [r for r in rows if r.get("cs_gap_kind") == "partial"]),
+        ("no_cs_whole", "No C# counterpart -- whole type unbound, likely deliberate", "sev-low",
+         [r for r in rows if r.get("cs_gap_kind") == "whole_type"]),
         ("ok", "Resolved, no issues", "sev-ok",
          [r for r in rows if r["native_status"] in ("RESOLVED", "RESOLVED_AMBIGUOUS")
           and r["native_status"] != "SCALAR_MISMATCH"
@@ -575,9 +599,12 @@ def generate_html_report(rows, out_path):
         open_attr = " open" if cls in ("sev-high", "sev-med") and items else ""
         body_rows = []
         for r in items:
+            gap_hint = (f"sibling bound as {r['cs_gap_sibling_prefix']}_*" if r.get("cs_gap_kind") == "partial"
+                        else f"nothing bound under {r['cs_gap_sibling_prefix']}_*" if r.get("cs_gap_kind") == "whole_type"
+                        else "")
             issue = " | ".join(
                 x for x in [r["native_mismatches"], r["native_suspicious_pointer_class"],
-                            r["native_enum_note"], r["cs_mismatches"]] if x
+                            r["native_enum_note"], r["cs_mismatches"], gap_hint] if x
             )
             wrap_loc = loc(r["file"], r["line"])
             b3_loc = loc(r["bullet3_file"], r["bullet3_line"])
@@ -677,6 +704,7 @@ def main():
     print(f"  {len(hierarchy)} classes found", file=sys.stderr)
 
     csharp = extract_csharp_pinvoke(CSHARP_FILE)
+    csharp_names = list(csharp.keys())
 
     rows = []
     parse_errors = []
@@ -805,7 +833,10 @@ def main():
             # wrap signature before comparing types.
             cs_status = "NO_CSHARP_COUNTERPART"
             cs_mismatches = []
+            cs_gap_kind = cs_gap_sibling = ""
             wrap_params_for_cs = hdr["params"] if hdr else wrap["params"]
+            if cs is None:
+                cs_gap_kind, cs_gap_sibling = classify_cs_gap(fn_name, csharp_names)
             if cs is not None:
                 overload = min(cs, key=lambda o: abs(len(o["params"]) - len(wrap_params_for_cs)))
                 cs_status = "OK"
@@ -843,6 +874,8 @@ def main():
                 "native_enum_note": " | ".join(native_enum_notes),
                 "cs_status": cs_status,
                 "cs_mismatches": " | ".join(cs_mismatches),
+                "cs_gap_kind": cs_gap_kind,
+                "cs_gap_sibling_prefix": cs_gap_sibling,
             })
 
     with open(args.out, "w", newline="", encoding="utf-8") as f:
@@ -859,6 +892,8 @@ def main():
     cs_mismatch_n = sum(1 for r in rows if r["cs_status"] == "SCALAR_MISMATCH")
     unresolved_n = sum(1 for r in rows if r["native_status"] == "UNRESOLVED")
     no_cs_n = sum(1 for r in rows if r["cs_status"] == "NO_CSHARP_COUNTERPART")
+    no_cs_partial_n = sum(1 for r in rows if r.get("cs_gap_kind") == "partial")
+    no_cs_whole_n = sum(1 for r in rows if r.get("cs_gap_kind") == "whole_type")
     suspicious_n = sum(1 for r in rows if r["native_suspicious_pointer_class"])
     enum_n = sum(1 for r in rows if r["native_enum_note"])
 
@@ -869,6 +904,8 @@ def main():
     print(f"  touches an enum (flagged, not strictly checked): {enum_n}")
     print(f"  unresolved call site (manual review):       {unresolved_n}")
     print(f"  no C# counterpart found:                    {no_cs_n}")
+    print(f"    - partial (sibling bound, this one missing -- worth a look): {no_cs_partial_n}")
+    print(f"    - whole_type (entire type unbound -- likely deliberate):     {no_cs_whole_n}")
     if parse_errors:
         print(f"\nFiles skipped due to parse errors ({len(parse_errors)}):")
         for fn, e in parse_errors:

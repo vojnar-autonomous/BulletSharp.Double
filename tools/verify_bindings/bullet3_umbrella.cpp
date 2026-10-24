@@ -1,0 +1,14 @@
+#include <btBulletCollisionCommon.h>
+#include <btBulletDynamicsCommon.h>
+#include <BulletSoftBody/btSoftBody.h>
+#include <BulletSoftBody/btSoftBodySolvers.h>
+#include <BulletSoftBody/btSoftBodyHelpers.h>
+#include <BulletSoftBody/btDefaultSoftBodySolver.h>
+#include <BulletSoftBody/btSoftBodyRigidBodyCollisionConfiguration.h>
+#include <BulletSoftBody/btSoftRigidDynamicsWorld.h>
+#include <BulletDynamics/Featherstone/btMultiBody.h>
+#include <BulletDynamics/Featherstone/btMultiBodyDynamicsWorld.h>
+#include <BulletCollision/CollisionDispatch/btConvexConvexAlgorithm.h>
+#include <BulletCollision/NarrowPhaseCollision/btVoronoiSimplexSolver.h>
+#include <BulletCollision/CollisionDispatch/btCollisionWorld.h>
+#include <BulletInverseDynamics/IDConfig.hpp>

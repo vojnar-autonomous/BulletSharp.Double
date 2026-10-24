@@ -1567,7 +1567,7 @@ namespace BulletSharp
 		public static extern void btConvexConvexAlgorithm_CreateFunc_setPdSolver(IntPtr obj, IntPtr value);
 
 		[DllImport(Native.Dll, CallingConvention = Native.Conv)]
-		public static extern IntPtr btConvexConvexAlgorithm_new(IntPtr mf, IntPtr ci, IntPtr body0Wrap, IntPtr body1Wrap, IntPtr simplexSolver, IntPtr pdSolver, int numPerturbationIterations, int minimumPointsPerturbationThreshold);
+		public static extern IntPtr btConvexConvexAlgorithm_new(IntPtr mf, IntPtr ci, IntPtr body0Wrap, IntPtr body1Wrap, IntPtr pdSolver, int numPerturbationIterations, int minimumPointsPerturbationThreshold);
 		[DllImport(Native.Dll, CallingConvention = Native.Conv)]
 		public static extern IntPtr btConvexConvexAlgorithm_getManifold(IntPtr obj);
 		[DllImport(Native.Dll, CallingConvention = Native.Conv)]
@@ -4034,7 +4034,7 @@ namespace BulletSharp
 		[DllImport(Native.Dll, CallingConvention = Native.Conv)]
 		public static extern void btMultiBody_localPosToWorld(IntPtr obj, int i, [In] ref Vector3 vec, out Vector3 value);
 		[DllImport(Native.Dll, CallingConvention = Native.Conv)]
-		public static extern void btMultiBody_predictPositionsMultiDof(double dt);
+		public static extern void btMultiBody_predictPositionsMultiDof(IntPtr obj, double dt);
 		[DllImport(Native.Dll, CallingConvention = Native.Conv)]
 		public static extern void btMultiBody_processDeltaVeeMultiDof2(IntPtr obj);
 		[DllImport(Native.Dll, CallingConvention = Native.Conv)]
@@ -6166,7 +6166,7 @@ namespace BulletSharp
 		[DllImport(Native.Dll, CallingConvention = Native.Conv)]
 		public static extern int btSoftBody_RayFromToCaster_getTests(IntPtr obj);
 		[DllImport(Native.Dll, CallingConvention = Native.Conv)]
-		public static extern double btSoftBody_RayFromToCaster_rayFromToTriangle([In] ref Vector3 rayFrom, [In] ref Vector3 rayTo, [In] ref Vector3 rayNormalizedDirection, [In] ref Vector3 a, [In] ref Vector3 b, [In] ref Vector3 c, double maxt);
+		public static extern double btSoftBody_RayFromToCaster_rayFromToTriangle2([In] ref Vector3 rayFrom, [In] ref Vector3 rayTo, [In] ref Vector3 rayNormalizedDirection, [In] ref Vector3 a, [In] ref Vector3 b, [In] ref Vector3 c, double maxt);
 		[DllImport(Native.Dll, CallingConvention = Native.Conv)]
 		public static extern void btSoftBody_RayFromToCaster_setFace(IntPtr obj, IntPtr value);
 		[DllImport(Native.Dll, CallingConvention = Native.Conv)]

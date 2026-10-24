@@ -1884,7 +1884,11 @@ namespace BulletSharp.SoftBody
 		public static double RayFromToTriangle(Vector3 rayFrom, Vector3 rayTo,
 			Vector3 rayNormalizedDirection, Vector3 a, Vector3 b, Vector3 c, double maxt = double.MaxValue)
 		{
-			return btSoftBody_RayFromToCaster_rayFromToTriangle(ref rayFrom,
+			// The 1-arg-less native overload (no "2" suffix) has no maxt parameter
+			// and always uses SIMD_INFINITY; calling it here silently discarded
+			// the caller-supplied cutoff. The "2" overload is the one that
+			// actually accepts maxt.
+			return btSoftBody_RayFromToCaster_rayFromToTriangle2(ref rayFrom,
 				ref rayTo, ref rayNormalizedDirection, ref a, ref b, ref c, maxt);
 		}
 

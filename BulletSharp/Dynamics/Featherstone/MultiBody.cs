@@ -288,7 +288,10 @@ namespace BulletSharp
 
 		public void PredictPositionsMultiDof(float deltaTime)
 		{
-			btMultiBody_predictPositionsMultiDof(deltaTime);
+			// The native wrap expects (btMultiBody* obj, btScalar dt); the obj
+			// argument was missing here, so this call read garbage from
+			// whatever register happened to hold it instead of Native.
+			btMultiBody_predictPositionsMultiDof(Native, deltaTime);
 		}
 
 		public void ProcessDeltaVeeMultiDof2()

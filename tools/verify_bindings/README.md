@@ -28,46 +28,63 @@ Assumes bullet3 is checked out as a sibling directory (`../../../bullet3`
 relative to this script, i.e. next to this fork's own repo root -- same
 layout `libbulletc`'s own CMakeLists.txt expects).
 
-Runs on Linux, macOS and Windows. In every case you need:
+Runs on Linux, macOS and Windows. You need two things, and **their major
+versions must match each other** -- a mismatch fails loudly at startup
+with an `undefined symbol` error (clang's C API only ever grows, so an
+older piece paired with a newer one is fine; two pieces more than a couple
+of major versions apart, in either direction, risks a missing symbol):
 
-1. The `clang` Python package, **pinned to the same major version as your
-   system's native libclang** (a version mismatch fails loudly at startup
-   with an `undefined symbol` error, so this is the #1 thing to check if
-   setup breaks):
-
-       pip install "clang==18.1.8"   # adjust the version, see below
-
-2. A native `libclang` shared library somewhere `find_libclang()` (top of
-   the script) can see. It checks common install locations per OS, then
-   the `LIBCLANG_PATH` env var as an override, then falls back to
-   clang.cindex's own default search. Nothing to configure if one of these
-   finds it; the script prints which path it picked (or that it found
-   none) on startup.
+1. A native `libclang` shared library. `find_libclang()` (top of the
+   script) looks in common install locations per OS, then the
+   `LIBCLANG_PATH` env var as an override, then falls back to
+   clang.cindex's own default search. The script prints which path it
+   picked (or that it found none) on startup.
 
    - **Linux**: usually already present if `clang`/`clang++` are installed
-     (`apt install clang` / `dnf install clang` / etc.) -- the script looks
-     under `/usr/lib/<arch>/`, `/usr/lib/llvm-*/lib/`, `/usr/lib/`.
+     (`apt install clang` / `dnf install clang` / etc.) -- looked for under
+     `/usr/lib/<arch>/`, `/usr/lib/llvm-*/lib/`, `/usr/lib/`.
    - **macOS**: Xcode Command Line Tools (`xcode-select --install`) already
      ship one; Homebrew's `brew install llvm` is also checked.
-   - **Windows**: easiest is `pip install libclang` (a separate PyPI
-     package from `clang` above, despite the confusingly similar name) --
-     it bundles a `libclang.dll` the script finds automatically via the
-     installed package's own directory. Alternatively install LLVM for
-     Windows (https://github.com/llvm/llvm-project/releases, the
-     `LLVM-*-win64.exe` installer) and it's picked up from
-     `C:\Program Files\LLVM\bin\libclang.dll`.
+   - **Windows**: install LLVM for Windows
+     (https://github.com/llvm/llvm-project/releases, the
+     `LLVM-*-win64.exe` installer) -- picked up from
+     `C:\Program Files\LLVM\bin\libclang.dll`. **Don't** use the `libclang`
+     PyPI package as your source for this DLL: as of writing it's stuck at
+     18.1.1 (unmaintained for newer LLVM releases), so if pip gives you
+     newer `clang` Python bindings alongside it you get exactly the
+     mismatch this section warns about. The official installer always has
+     a current release.
 
-   If none of that works on your machine, find your `libclang` manually
-   and set it explicitly:
+   Note: the `libclang` package installs its own `clang/cindex.py` into the
+   *same* `clang` Python package namespace as the `clang` package below --
+   installing both is a namespace collision (whichever installs last wins,
+   silently). Pick one approach: either `libclang` alone (self-contained,
+   simplest, but capped at the old 18.1.1 it bundles) or LLVM-for-Windows
+   plus the separate `clang` package below (current, but two installs).
+   Don't mix them.
 
-       # Windows (PowerShell)
-       $env:LIBCLANG_PATH = "C:\Program Files\LLVM\bin\libclang.dll"
-       # Linux/macOS
-       export LIBCLANG_PATH=/path/to/libclang.so
+2. The `clang` Python package -- pure Python, no compiled extension, so it
+   installs on any Python version regardless of what's available for (1):
 
-To find the right `clang` package version for whatever libclang you have,
-match its major version number (18.x pairs with `libclang-18`, etc.) --
-`pip index versions clang` lists what's on PyPI.
+       pip install clang==<major>.<minor>.<patch>
+
+   Pick the version whose **major** number matches whatever LLVM you
+   installed in step 1 (LLVM 20.x -> `clang==20.1.5`, LLVM 21.x ->
+   `clang==21.1.7`, etc. -- `pip index versions clang` lists what's on
+   PyPI). Do not just `pip install clang` unpinned: it grabs the latest,
+   which may be newer than the LLVM release you actually have installed.
+
+   If you installed LLVM 20 or newer in step 1, pinning to an old
+   `clang==18.1.8` is the wrong direction (older bindings are fine against
+   a newer native lib, but there's no reason to undershoot -- just match
+   it) -- use `clang==20.1.x`/`21.1.x` etc. to fit whatever you actually have.
+
+If step 1 isn't found automatically, set it explicitly:
+
+    # Windows (PowerShell)
+    $env:LIBCLANG_PATH = "C:\Program Files\LLVM\bin\libclang.dll"
+    # Linux/macOS
+    export LIBCLANG_PATH=/path/to/libclang.so
 
 ## Usage
 

@@ -16,3 +16,5 @@ build/
 CMakeCache.txt
 CMakeFiles/
 cmake_install.cmake
+/tools/verify_bindings/binding_report.html
+/tools/verify_bindings/binding_report.csv

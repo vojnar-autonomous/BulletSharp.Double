@@ -63,7 +63,7 @@ namespace BulletSharp
 
 			GCHandle pointsArray = GCHandle.Alloc(points, GCHandleType.Pinned);
 			GCHandle trianglesArray = GCHandle.Alloc(triangles, GCHandleType.Pinned);
-			bool ret = HACD_HACD_GetCH(Native, numCH, pointsArray.AddrOfPinnedObject(), trianglesArray.AddrOfPinnedObject());
+			bool ret = HACD_HACD_GetCH(Native, (UIntPtr)numCH, pointsArray.AddrOfPinnedObject(), trianglesArray.AddrOfPinnedObject());
 			pointsArray.Free();
 			trianglesArray.Free();
 			return ret;
@@ -71,12 +71,12 @@ namespace BulletSharp
 
 		public int GetNPointsCH(int numCH)
 		{
-			return HACD_HACD_GetNPointsCH(Native, numCH);
+			return (int)HACD_HACD_GetNPointsCH(Native, (UIntPtr)numCH);
 		}
 
 		public int GetNTrianglesCH(int numCH)
 		{
-			return HACD_HACD_GetNTrianglesCH(Native, numCH);
+			return (int)HACD_HACD_GetNTrianglesCH(Native, (UIntPtr)numCH);
 		}
 
 		public double[] GetPoints()
@@ -241,26 +241,26 @@ namespace BulletSharp
 
 		public int NClusters
 		{
-			get => HACD_HACD_GetNClusters(Native);
-			set => HACD_HACD_SetNClusters(Native, value);
+			get => (int)HACD_HACD_GetNClusters(Native);
+			set => HACD_HACD_SetNClusters(Native, (UIntPtr)value);
 		}
 
 		public int NPoints
 		{
-			get => HACD_HACD_GetNPoints(Native);
-			set => HACD_HACD_SetNPoints(Native, value);
+			get => (int)HACD_HACD_GetNPoints(Native);
+			set => HACD_HACD_SetNPoints(Native, (UIntPtr)value);
 		}
 
 		public int NTriangles
 		{
-			get => HACD_HACD_GetNTriangles(Native);
-			set => HACD_HACD_SetNTriangles(Native, value);
+			get => (int)HACD_HACD_GetNTriangles(Native);
+			set => HACD_HACD_SetNTriangles(Native, (UIntPtr)value);
 		}
 
 		public int VerticesPerConvexHull
 		{
-			get => HACD_HACD_GetNVerticesPerCH(Native);
-			set => HACD_HACD_SetNVerticesPerCH(Native, value);
+			get => (int)HACD_HACD_GetNVerticesPerCH(Native);
+			set => HACD_HACD_SetNVerticesPerCH(Native, (UIntPtr)value);
 		}
 		/*
 		public long Partition

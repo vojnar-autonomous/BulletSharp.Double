@@ -49,7 +49,7 @@ const HACD_CallBackFunction HACD_HACD_GetCallBack(HACD_HACD* obj)
 	return obj->GetCallBack();
 }
 
-bool HACD_HACD_GetCH(HACD_HACD* obj, int numCH, HACD_Vec3_Real* points, HACD_Vec3_long* triangles)
+bool HACD_HACD_GetCH(HACD_HACD* obj, size_t numCH, HACD_Vec3_Real* points, HACD_Vec3_long* triangles)
 {
 	return obj->GetCH(numCH, points, triangles);
 }
@@ -79,7 +79,7 @@ size_t HACD_HACD_GetNPoints(HACD_HACD* obj)
 	return obj->GetNPoints();
 }
 
-size_t HACD_HACD_GetNPointsCH(HACD_HACD* obj, int numCH)
+size_t HACD_HACD_GetNPointsCH(HACD_HACD* obj, size_t numCH)
 {
 	return obj->GetNPointsCH(numCH);
 }
@@ -89,7 +89,7 @@ size_t HACD_HACD_GetNTriangles(HACD_HACD* obj)
 	return obj->GetNTriangles();
 }
 
-size_t HACD_HACD_GetNTrianglesCH(HACD_HACD* obj, int numCH)
+size_t HACD_HACD_GetNTrianglesCH(HACD_HACD* obj, size_t numCH)
 {
 	return obj->GetNTrianglesCH(numCH);
 }
@@ -174,22 +174,22 @@ void HACD_HACD_SetConnectDist(HACD_HACD* obj, double ccConnectDist)
 	obj->SetConnectDist(ccConnectDist);
 }
 
-void HACD_HACD_SetNClusters(HACD_HACD* obj, int nClusters)
+void HACD_HACD_SetNClusters(HACD_HACD* obj, size_t nClusters)
 {
 	obj->SetNClusters(nClusters);
 }
 
-void HACD_HACD_SetNPoints(HACD_HACD* obj, int nPoints)
+void HACD_HACD_SetNPoints(HACD_HACD* obj, size_t nPoints)
 {
 	obj->SetNPoints(nPoints);
 }
 
-void HACD_HACD_SetNTriangles(HACD_HACD* obj, int nTriangles)
+void HACD_HACD_SetNTriangles(HACD_HACD* obj, size_t nTriangles)
 {
 	obj->SetNTriangles(nTriangles);
 }
 
-void HACD_HACD_SetNVerticesPerCH(HACD_HACD* obj, int nVerticesPerCH)
+void HACD_HACD_SetNVerticesPerCH(HACD_HACD* obj, size_t nVerticesPerCH)
 {
 	obj->SetNVerticesPerCH(nVerticesPerCH);
 }

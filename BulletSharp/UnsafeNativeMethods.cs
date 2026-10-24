@@ -7437,7 +7437,7 @@ namespace BulletSharp
 		public static extern IntPtr HACD_HACD_GetCallBack(IntPtr obj);
 		[DllImport(Native.Dll, CallingConvention = Native.Conv)]
 		[return: MarshalAs(UnmanagedType.I1)]
-		public static extern bool HACD_HACD_GetCH(IntPtr obj, int numCH, IntPtr points, IntPtr triangles);
+		public static extern bool HACD_HACD_GetCH(IntPtr obj, UIntPtr numCH, IntPtr points, IntPtr triangles);
 		[DllImport(Native.Dll, CallingConvention = Native.Conv)]
 		public static extern double HACD_HACD_GetCompacityWeight(IntPtr obj);
 		[DllImport(Native.Dll, CallingConvention = Native.Conv)]
@@ -7445,17 +7445,17 @@ namespace BulletSharp
 		[DllImport(Native.Dll, CallingConvention = Native.Conv)]
 		public static extern double HACD_HACD_GetConnectDist(IntPtr obj);
 		[DllImport(Native.Dll, CallingConvention = Native.Conv)]
-		public static extern int HACD_HACD_GetNClusters(IntPtr obj);
+		public static extern UIntPtr HACD_HACD_GetNClusters(IntPtr obj);
 		[DllImport(Native.Dll, CallingConvention = Native.Conv)]
-		public static extern int HACD_HACD_GetNPoints(IntPtr obj);
+		public static extern UIntPtr HACD_HACD_GetNPoints(IntPtr obj);
 		[DllImport(Native.Dll, CallingConvention = Native.Conv)]
-		public static extern int HACD_HACD_GetNPointsCH(IntPtr obj, int numCH);
+		public static extern UIntPtr HACD_HACD_GetNPointsCH(IntPtr obj, UIntPtr numCH);
 		[DllImport(Native.Dll, CallingConvention = Native.Conv)]
-		public static extern int HACD_HACD_GetNTriangles(IntPtr obj);
+		public static extern UIntPtr HACD_HACD_GetNTriangles(IntPtr obj);
 		[DllImport(Native.Dll, CallingConvention = Native.Conv)]
-		public static extern int HACD_HACD_GetNTrianglesCH(IntPtr obj, int numCH);
+		public static extern UIntPtr HACD_HACD_GetNTrianglesCH(IntPtr obj, UIntPtr numCH);
 		[DllImport(Native.Dll, CallingConvention = Native.Conv)]
-		public static extern int HACD_HACD_GetNVerticesPerCH(IntPtr obj);
+		public static extern UIntPtr HACD_HACD_GetNVerticesPerCH(IntPtr obj);
 		[DllImport(Native.Dll, CallingConvention = Native.Conv)]
 		public static extern IntPtr HACD_HACD_GetPartition(IntPtr obj);
 		[DllImport(Native.Dll, CallingConvention = Native.Conv)]
@@ -7489,13 +7489,13 @@ namespace BulletSharp
 		[DllImport(Native.Dll, CallingConvention = Native.Conv)]
 		public static extern void HACD_HACD_SetConnectDist(IntPtr obj, double ccConnectDist);
 		[DllImport(Native.Dll, CallingConvention = Native.Conv)]
-		public static extern void HACD_HACD_SetNClusters(IntPtr obj, int nClusters);
+		public static extern void HACD_HACD_SetNClusters(IntPtr obj, UIntPtr nClusters);
 		[DllImport(Native.Dll, CallingConvention = Native.Conv)]
-		public static extern void HACD_HACD_SetNPoints(IntPtr obj, int nPoints);
+		public static extern void HACD_HACD_SetNPoints(IntPtr obj, UIntPtr nPoints);
 		[DllImport(Native.Dll, CallingConvention = Native.Conv)]
-		public static extern void HACD_HACD_SetNTriangles(IntPtr obj, int nTriangles);
+		public static extern void HACD_HACD_SetNTriangles(IntPtr obj, UIntPtr nTriangles);
 		[DllImport(Native.Dll, CallingConvention = Native.Conv)]
-		public static extern void HACD_HACD_SetNVerticesPerCH(IntPtr obj, int nVerticesPerCH);
+		public static extern void HACD_HACD_SetNVerticesPerCH(IntPtr obj, UIntPtr nVerticesPerCH);
 		[DllImport(Native.Dll, CallingConvention = Native.Conv)]
 		public static extern void HACD_HACD_SetPoints(IntPtr obj, IntPtr points);
 		[DllImport(Native.Dll, CallingConvention = Native.Conv)]

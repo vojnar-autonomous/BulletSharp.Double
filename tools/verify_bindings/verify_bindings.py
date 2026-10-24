@@ -673,12 +673,12 @@ def generate_html_report(rows, out_path):
         sections_html.append(
             f'<details class="group {cls}"{open_attr} data-group="{key}">'
             f'<summary>{_esc(title)} <span class="count">({len(items)})</span></summary>'
-            '<table><thead><tr>'
+            '<div class="table-scroll"><table><thead><tr>'
             "<th>wrap file:line</th><th>wrap function</th><th>bullet3 file:line</th>"
             "<th>bullet3 target</th><th>issue / detail</th>"
             "</tr></thead><tbody>"
             + ("".join(body_rows) if body_rows else '<tr><td colspan="5" class="empty">none</td></tr>')
-            + "</tbody></table></details>"
+            + "</tbody></table></div></details>"
         )
 
     html = f"""<!doctype html>
@@ -698,14 +698,20 @@ def generate_html_report(rows, out_path):
   .sev-info {{ background: #122a3a; }}
   .sev-low {{ background: #222; }}
   .sev-ok {{ background: #123a1c; }}
-  details.group {{ margin-bottom: 0.7rem; border: 1px solid #2a2d33; border-radius: 8px; overflow: hidden; }}
+  details.group {{ margin-bottom: 0.7rem; border: 1px solid #2a2d33; border-radius: 8px; }}
+  details.group > summary {{ border-radius: 8px; }}
+  details.group[open] > summary {{ border-radius: 8px 8px 0 0; }}
   summary {{ cursor: pointer; padding: 0.6rem 1rem; font-weight: 600; background: #1a1c20; }}
   summary .count {{ color: #9aa0a6; font-weight: 400; }}
-  table {{ width: 100%; border-collapse: collapse; font-size: 0.85rem; }}
-  th, td {{ text-align: left; padding: 0.35rem 0.8rem; border-bottom: 1px solid #22242a; }}
+  /* Let a table wider than the viewport scroll horizontally instead of
+     wrapping cell text or getting clipped -- rows stay on one line and
+     nothing is hidden, you just scroll sideways to see the rest. */
+  .table-scroll {{ overflow-x: auto; border-radius: 0 0 8px 8px; }}
+  table {{ width: 100%; min-width: 900px; border-collapse: collapse; font-size: 0.85rem; }}
+  th, td {{ text-align: left; padding: 0.35rem 0.8rem; border-bottom: 1px solid #22242a; white-space: nowrap; }}
   th {{ color: #9aa0a6; font-weight: 600; position: sticky; top: 0; background: #14161a; }}
   tr:hover td {{ background: #1a1c20; }}
-  .mono {{ font-family: SFMono-Regular, Consolas, monospace; white-space: nowrap; }}
+  .mono {{ font-family: SFMono-Regular, Consolas, monospace; }}
   .empty {{ color: #666; font-style: italic; }}
   input#filter {{ width: 100%; max-width: 420px; padding: 0.4rem 0.6rem; margin-bottom: 1rem;
                   border-radius: 6px; border: 1px solid #333; background: #1a1c20; color: #eee; }}

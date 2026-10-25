@@ -1,0 +1,38 @@
+<Project>
+
+  <!--
+    All demo .csproj files P/Invoke into the native libbulletc library
+    (DllImport("libbulletc")), which this repo does not build, package, or
+    ship automatically - CI only produces it for CI's own test run. A local
+    build must be placed next to the demo's own output, or every demo throws
+    DllNotFoundException at startup despite a totally clean managed build.
+
+    This copies a locally CMake-built libbulletc.dll into each demo's output
+    directory after build. It does not build libbulletc itself - run CMake
+    against libbulletc/ first (see libbulletc/CMakeLists.txt), the same way
+    CI does for Linux. Override LibBulletCNativeDir to point elsewhere, e.g.:
+      dotnet build -p:LibBulletCNativeDir=C:\some\other\path\
+  -->
+
+  <PropertyGroup>
+    <!-- Multi-config generators (Visual Studio, the Windows default) put
+         binaries in a per-configuration subfolder. -->
+    <LibBulletCNativeDir Condition="'$(LibBulletCNativeDir)' == ''">$(MSBuildThisFileDirectory)..\libbulletc\build\$(Configuration)\</LibBulletCNativeDir>
+    <!-- Single-config generators (Ninja, Unix Makefiles) put the binary
+         directly in the build directory - what CI uses on Linux. -->
+    <LibBulletCNativeDirFlat Condition="'$(LibBulletCNativeDirFlat)' == ''">$(MSBuildThisFileDirectory)..\libbulletc\build\</LibBulletCNativeDirFlat>
+  </PropertyGroup>
+
+  <Target Name="CopyNativeLibBulletCMultiConfig" AfterTargets="Build" Condition="Exists('$(LibBulletCNativeDir)libbulletc.dll')">
+    <Copy SourceFiles="$(LibBulletCNativeDir)libbulletc.dll" DestinationFolder="$(OutDir)" SkipUnchangedFiles="true" />
+  </Target>
+
+  <Target Name="CopyNativeLibBulletCSingleConfig" AfterTargets="Build" Condition="!Exists('$(LibBulletCNativeDir)libbulletc.dll') and Exists('$(LibBulletCNativeDirFlat)libbulletc.dll')">
+    <Copy SourceFiles="$(LibBulletCNativeDirFlat)libbulletc.dll" DestinationFolder="$(OutDir)" SkipUnchangedFiles="true" />
+  </Target>
+
+  <Target Name="WarnMissingNativeLibBulletC" AfterTargets="Build" Condition="!Exists('$(LibBulletCNativeDir)libbulletc.dll') and !Exists('$(LibBulletCNativeDirFlat)libbulletc.dll')">
+    <Warning Text="libbulletc.dll not found near '$(LibBulletCNativeDir)' or '$(LibBulletCNativeDirFlat)' -- demos will throw DllNotFoundException at runtime. Build it via CMake first (see libbulletc/CMakeLists.txt), or set LibBulletCNativeDir/LibBulletCNativeDirFlat to point at an existing build." />
+  </Target>
+
+</Project>

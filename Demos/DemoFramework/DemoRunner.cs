@@ -22,7 +22,7 @@ namespace DemoFramework
         {
             try
             {
-                Assembly.Load("BulletSharp");
+                Assembly.Load("BulletSharp.Double");
                 return true;
             }
             catch (Exception e)

@@ -1,9 +1,9 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFrameworks>netstandard2.1;net8.0</TargetFrameworks>
-    <Version>0.12.0.0</Version>
-    <Authors>Vojnar Autonomous s.r.o.</Authors>
+    <Version>1.0.0</Version>
+    <Authors>vojnar-autonomous</Authors>
     <Company>Vojnar Autonomous s.r.o.</Company>
     <RootNamespace>BulletSharp.Double</RootNamespace>
     <AssemblyName>BulletSharp.Double</AssemblyName>
@@ -11,14 +11,24 @@
     <PackageLicenseExpression>Zlib</PackageLicenseExpression>
     <PackageProjectUrl>https://vojnarautonomous.com/</PackageProjectUrl>
     <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
-    <Description>.NET double-precision wrapper for the Bullet physics engine</Description>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
 
-    <!-- Packaging metadata. RepositoryUrl is set now so it's ready the
-         moment the repo goes public; nuget.org just shows a dead link
-         on the package page until then, it doesn't block publishing. -->
+    <Copyright>Portions Copyright (c) 2026 Vojnar Autonomous s.r.o.; see LICENSE for full third-party notices</Copyright>
+    <Description>Idiomatic, SWIG-like double-precision C# binding for the Bullet Physics Library (bullet3), compiled with USE_DOUBLE_PRECISION and closely following bullet3's own naming and conventions. Bundles native runtimes for win-x64 and linux-x64.
+
+Covers collision shapes and algorithms, dynamics worlds and rigid bodies (including multithreaded variants), constraints, vehicle raycasting, the kinematic character controller, soft bodies and multibody dynamics, and .bullet world (de)serialization.
+
+Derivative of BulletSharpPInvoke/libbulletc, wrapping Bullet Physics Library (bullet3). Zlib licensed.</Description>
+
+    <PackageReleaseNotes>Initial public release.
+- Idiomatic double-precision C# binding, built against bullet3 3.25 (vendored as a submodule).
+- Restructured solution/project layout from the abandoned BulletSharpPInvoke base.
+- New: tools/verify_bindings, a binding-correctness checker across libbulletc, bullet3 and the C# API.
+- New: GitHub Actions CI building libbulletc from source and packaging native runtimes.
+- Numerous correctness fixes to the P/Invoke layer, including pre-existing bugs in upstream BulletSharpPInvoke, found via verify_bindings.
+- Native runtimes: win-x64, linux-x64.    </PackageReleaseNotes>
     <PackageReadmeFile>README.md</PackageReadmeFile>
-    <PackageTags>bullet;bullet-physics;physics;physics-engine;double-precision;pinvoke;simulation;robotics</PackageTags>
+    <PackageTags>bullet;bullet-physics;physics;physics-engine;double;double-precision;pinvoke;simulation;robotics</PackageTags>
     <RepositoryUrl>https://github.com/vojnar-autonomous/bulletsharp.double</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <IncludeSymbols>true</IncludeSymbols>
@@ -90,10 +100,8 @@
   </PropertyGroup>
 
   <ItemGroup Condition="'$(TargetFramework)' == 'net8.0'">
-    <Content Include="$(LibBulletCRuntimeLinuxX64)" Condition="Exists('$(LibBulletCRuntimeLinuxX64)')"
-             Pack="true" PackagePath="runtimes/linux-x64/native/libbulletc.so" Visible="false" />
-    <Content Include="$(LibBulletCRuntimeWinX64)" Condition="Exists('$(LibBulletCRuntimeWinX64)')"
-             Pack="true" PackagePath="runtimes/win-x64/native/libbulletc.dll" Visible="false" />
+    <Content Include="$(LibBulletCRuntimeLinuxX64)" Condition="Exists('$(LibBulletCRuntimeLinuxX64)')" Pack="true" PackagePath="runtimes/linux-x64/native/libbulletc.so" Visible="false" />
+    <Content Include="$(LibBulletCRuntimeWinX64)" Condition="Exists('$(LibBulletCRuntimeWinX64)')" Pack="true" PackagePath="runtimes/win-x64/native/libbulletc.dll" Visible="false" />
   </ItemGroup>
 
   <!-- Fail the pack itself (not ordinary builds) if either RID's native
@@ -101,10 +109,8 @@
        catching that only once someone hits a DllNotFoundException on the
        platform that was missing would be a much worse way to find out. -->
   <Target Name="RequireNativeRuntimeAssetsForPack" BeforeTargets="Pack" Condition="'$(TargetFramework)' == 'net8.0'">
-    <Error Condition="!Exists('$(LibBulletCRuntimeLinuxX64)')"
-           Text="Packing needs a linux-x64 libbulletc.so at '$(LibBulletCRuntimeLinuxX64)' (or override -p:LibBulletCRuntimeLinuxX64=...). See artifacts/runtimes/README.md." />
-    <Error Condition="!Exists('$(LibBulletCRuntimeWinX64)')"
-           Text="Packing needs a win-x64 libbulletc.dll at '$(LibBulletCRuntimeWinX64)' (or override -p:LibBulletCRuntimeWinX64=...). See artifacts/runtimes/README.md." />
+    <Error Condition="!Exists('$(LibBulletCRuntimeLinuxX64)')" Text="Packing needs a linux-x64 libbulletc.so at '$(LibBulletCRuntimeLinuxX64)' (or override -p:LibBulletCRuntimeLinuxX64=...). See artifacts/runtimes/README.md." />
+    <Error Condition="!Exists('$(LibBulletCRuntimeWinX64)')" Text="Packing needs a win-x64 libbulletc.dll at '$(LibBulletCRuntimeWinX64)' (or override -p:LibBulletCRuntimeWinX64=...). See artifacts/runtimes/README.md." />
   </Target>
 
 </Project>

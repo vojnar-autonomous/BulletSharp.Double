@@ -48,6 +48,14 @@ SET(CMAKE_POSITION_INDEPENDENT_CODE ON)
 # and OPTION() is a no-op if the cache variable already exists.
 OPTION(USE_DOUBLE_PRECISION "" ON)
 
+# Same reasoning: without BT_THREADSAFE (only defined when this is ON),
+# btParallelFor hits btAssert(!"called btParallelFor in non-threadsafe
+# build...")
+# The OpenMP/TBB/PPL backends stay opt-in (external dependencies); this
+# alone gets bullet3's own built-in task scheduler, same as pybullet's
+# setup.py, which always defines BT_THREADSAFE=1 regardless of those.
+OPTION(BULLET2_MULTITHREADING "" ON)
+
 ADD_SUBDIRECTORY("${BULLET_INCLUDE_DIR}/.." "${CMAKE_CURRENT_BINARY_DIR}/bullet")
 
 INCLUDE_DIRECTORIES(${BULLET_INCLUDE_DIR})

@@ -56,6 +56,16 @@ OPTION(USE_DOUBLE_PRECISION "" ON)
 # setup.py, which always defines BT_THREADSAFE=1 regardless of those.
 OPTION(BULLET2_MULTITHREADING "" ON)
 
+# Same reasoning again: on WIN32, bullet3's own CMakeLists.txt caches
+# LIBRARY_OUTPUT_PATH as "<build>/lib" (its non-distributable-projectfiles
+# default). On Windows, CMake's legacy compatibility layer makes that
+# variable also redirect RUNTIME_OUTPUT_DIRECTORY, so our libbulletc.dll
+# -- not just bullet3's own static .libs -- lands in build/lib/ instead
+# of flat at build/, unlike every other platform. Pre-caching it here
+# keeps the single flat output layout CI and BulletSharp.Double.csproj's
+# LibBulletCNativeDirFlat both already expect everywhere.
+SET(LIBRARY_OUTPUT_PATH "${CMAKE_BINARY_DIR}" CACHE PATH "")
+
 ADD_SUBDIRECTORY("${BULLET_INCLUDE_DIR}/.." "${CMAKE_CURRENT_BINARY_DIR}/bullet")
 
 INCLUDE_DIRECTORIES(${BULLET_INCLUDE_DIR})
@@ -63,10 +73,19 @@ INCLUDE_DIRECTORIES(${BULLET_PHYSICS_SOURCE_DIR}/Extras/HACD/)
 INCLUDE_DIRECTORIES(${BULLET_PHYSICS_SOURCE_DIR}/Extras/Serialize/BulletWorldImporter/)
 INCLUDE_DIRECTORIES(${BULLET_PHYSICS_SOURCE_DIR}/Extras/Serialize/BulletXmlWorldImporter/)
 
-IF(${CMAKE_GENERATOR} MATCHES "Unix Makefiles")
-    SET(BULLETC_LIB bulletc)
-ELSE()
+# CMake's default shared-library naming already prepends "lib" on
+# Unix-likes (giving libbulletc.so/.dylib from a target named "bulletc")
+# but not on Windows (giving libbulletc.dll only from a target actually
+# named "libbulletc"). The old check keyed this off the generator name
+# ("Unix Makefiles"), which only ever matched the Makefiles generator --
+# so it silently broke the moment CI (or anyone) builds with Ninja on
+# Linux/macOS, producing a doubled-up "liblibbulletc.so" instead. WIN32
+# is the actual thing that varies: it's set from the target platform,
+# the same regardless of which generator is in use.
+IF(WIN32)
     SET(BULLETC_LIB libbulletc)
+ELSE()
+    SET(BULLETC_LIB bulletc)
 ENDIF()
 
 IF (USE_DOUBLE_PRECISION)

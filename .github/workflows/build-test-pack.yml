@@ -1,0 +1,250 @@
+name: Build native libbulletc, test, and pack
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch: {}
+
+jobs:
+  # One native libbulletc build + managed smoke test per RID. Ninja (a
+  # single-config generator) is forced on every OS so the output always
+  # lands flat at libbulletc/build/libbulletc.<ext> - the same path
+  # LibBulletCNativeDirFlat in BulletSharp.Double.csproj already checks for
+  # local dev, instead of MSVC's multi-config lib/<Config>/ layout on
+  # Windows needing special-casing here.
+  build-and-test:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - rid: linux-x64
+            os: ubuntu-latest
+            lib_name: libbulletc.so
+          - rid: linux-arm64
+            os: ubuntu-24.04-arm
+            lib_name: libbulletc.so
+          - rid: win-x64
+            os: windows-latest
+            lib_name: libbulletc.dll
+            msvc_arch: amd64
+          - rid: win-arm64
+            os: windows-11-arm
+            lib_name: libbulletc.dll
+            msvc_arch: arm64
+          - rid: osx-x64
+            os: macos-15-intel
+            lib_name: libbulletc.dylib
+          - rid: osx-arm64
+            os: macos-latest
+            lib_name: libbulletc.dylib
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout (with bullet3 submodule)
+        uses: actions/checkout@v6
+        with:
+          submodules: true
+
+      - name: Install Ninja (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y ninja-build
+
+      - name: Install Ninja (macOS)
+        if: runner.os == 'macOS'
+        run: brew install ninja
+
+      - name: Install Ninja (Windows)
+        if: runner.os == 'Windows'
+        run: choco install ninja -y
+
+      # Ninja needs cl.exe on PATH; the Visual Studio generator finds MSVC
+      # by itself but Ninja doesn't
+      - name: Set up MSVC environment (Windows)
+        if: runner.os == 'Windows'
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: ${{ matrix.msvc_arch }}
+
+      - name: Configure (CMake)
+        # -DCMAKE_POLICY_VERSION_MINIMUM=3.5: bullet3's own CMakeLists.txt
+        run: cmake -S libbulletc -B libbulletc/build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_POLICY_VERSION_MINIMUM="3.5"
+
+      - name: Build libbulletc
+        run: cmake --build libbulletc/build --config Release --parallel
+
+      - name: Upload ${{ matrix.lib_name }}
+        uses: actions/upload-artifact@v5
+        with:
+          name: libbulletc-${{ matrix.rid }}
+          path: libbulletc/build/${{ matrix.lib_name }}
+          retention-days: 7
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 8.0.x
+          cache: true
+          cache-dependency-path: '**/*.csproj'
+
+      # -p:Platform="Any CPU" (with the space - that's the literal name in
+      # this .sln's own GlobalSection(SolutionConfigurationPlatforms); the
+      # SDK-style "AnyCPU" without a space is a different, project-level
+      # convention and is invalid here): on Windows, msvc-dev-cmd's
+      # vcvarsall.bat set a "Platform" env var (amd64/arm64, for cl.exe)
+      # that's still in scope for the rest of the job - MSBuild reads env
+      # vars as implicit properties, so dotnet restore/build against the
+      # .sln would otherwise try to resolve a "Debug|x64"/"Debug|arm64"
+      # solution configuration that doesn't exist (the C# side is
+      # platform-agnostic, only libbulletc.* is per-RID).
+      - name: Restore
+        run: dotnet restore BulletSharp.Double.sln -p:Platform="Any CPU"
+
+      - name: Build
+        run: dotnet build --configuration Release --no-restore BulletSharp.Double.sln -p:Platform="Any CPU"
+
+      # DllImport("libbulletc") resolution: Linux/macOS need the native lib's
+      # directory on the loader search path, Windows finds it next to the
+      # test assembly (the csproj's Content item already copies it there)
+      - name: Test (Linux)
+        if: runner.os == 'Linux'
+        env:
+          LD_LIBRARY_PATH: ${{ github.workspace }}/libbulletc/build
+        run: dotnet test --configuration Release --no-build --verbosity normal --logger trx BulletSharp/test/BulletSharpTest.csproj
+
+      - name: Test (macOS)
+        if: runner.os == 'macOS'
+        env:
+          DYLD_LIBRARY_PATH: ${{ github.workspace }}/libbulletc/build
+        run: dotnet test --configuration Release --no-build --verbosity normal --logger trx BulletSharp/test/BulletSharpTest.csproj
+
+      # Unlike the .sln steps above, this runs a single project directly,
+      # so it needs no Platform override to resolve anything - but the
+      # same leaked env var from msvc-dev-cmd still reaches it and, if
+      # left alone, makes the plain SDK-style test project build to
+      # bin/x64/Release/... instead of bin/Release/..., which dotnet test
+      # then can't find. Clearing it here (rather than overriding to some
+      # value) restores the same "no Platform in scope" state Linux/macOS
+      # already have above, which is what resolves correctly.
+      - name: Test (Windows)
+        if: runner.os == 'Windows'
+        env:
+          Platform: ''
+        run: dotnet test --configuration Release --no-build --verbosity normal --logger trx BulletSharp/test/BulletSharpTest.csproj
+
+      - name: Upload test results on failure
+        if: failure()
+        uses: actions/upload-artifact@v5
+        with:
+          name: test-results-${{ matrix.rid }}
+          path: BulletSharp/test/TestResults/*.trx
+          retention-days: 7
+          if-no-files-found: ignore
+
+  # BULLET_OBJECT_TRACKING is a Debug-only define on the C# side and doesn't
+  # touch the native build at all (see BulletSharp.Double.csproj)
+  # Checked only once, not once per RID
+  debug-smoke-test:
+    runs-on: ubuntu-latest
+    needs: build-and-test
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Download libbulletc.so (linux-x64)
+        uses: actions/download-artifact@v5
+        with:
+          name: libbulletc-linux-x64
+          path: libbulletc/build
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 8.0.x
+          cache: true
+          cache-dependency-path: '**/*.csproj'
+
+      - name: Restore
+        run: dotnet restore BulletSharp.Double.sln
+
+      - name: Build (Debug)
+        run: dotnet build --configuration Debug --no-restore BulletSharp.Double.sln
+
+      - name: Test (Debug)
+        env:
+          LD_LIBRARY_PATH: ${{ github.workspace }}/libbulletc/build
+        run: dotnet test --configuration Debug --no-build --verbosity normal --logger trx BulletSharp/test/BulletSharpTest.csproj
+
+  # Only on a manual run
+  # Produces the .nupkg/.snupkg as a downloadable workflow artifact
+  pack:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    needs: build-and-test
+    steps:
+      # fetch-depth: 0 (full history, tags included)
+      # MinVer runs `git describe` against the checkout
+      - name: Checkout (with bullet3 submodule)
+        uses: actions/checkout@v6
+        with:
+          submodules: true
+          fetch-depth: 0
+
+      - name: Download libbulletc-linux-x64
+        uses: actions/download-artifact@v5
+        with:
+          name: libbulletc-linux-x64
+          path: artifacts/runtimes/linux-x64/native
+
+      - name: Download libbulletc-linux-arm64
+        uses: actions/download-artifact@v5
+        with:
+          name: libbulletc-linux-arm64
+          path: artifacts/runtimes/linux-arm64/native
+
+      - name: Download libbulletc-win-x64
+        uses: actions/download-artifact@v5
+        with:
+          name: libbulletc-win-x64
+          path: artifacts/runtimes/win-x64/native
+
+      - name: Download libbulletc-win-arm64
+        uses: actions/download-artifact@v5
+        with:
+          name: libbulletc-win-arm64
+          path: artifacts/runtimes/win-arm64/native
+
+      - name: Download libbulletc-osx-x64
+        uses: actions/download-artifact@v5
+        with:
+          name: libbulletc-osx-x64
+          path: artifacts/runtimes/osx-x64/native
+
+      - name: Download libbulletc-osx-arm64
+        uses: actions/download-artifact@v5
+        with:
+          name: libbulletc-osx-arm64
+          path: artifacts/runtimes/osx-arm64/native
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 8.0.x
+
+      # ContinuousIntegrationBuild maps embedded PDB source paths to a
+      # deterministic placeholder instead of this runner's real checkout path.
+      # SkipNativeLibBulletCCheck: this job never does a local native CMake
+      # build (it only downloads already-built runtime artifacts above for
+      # packaging) - see the csproj for what that guard is actually for.
+      - name: Pack
+        run: dotnet pack BulletSharp/BulletSharp.Double.csproj -c Release -p:ContinuousIntegrationBuild=true -p:SkipNativeLibBulletCCheck=true
+
+      - name: Upload nupkg/snupkg
+        uses: actions/upload-artifact@v5
+        with:
+          name: nuget-packages
+          path: |
+            BulletSharp/bin/Release/*.nupkg
+            BulletSharp/bin/Release/*.snupkg
+          retention-days: 14

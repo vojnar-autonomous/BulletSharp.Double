@@ -2,7 +2,8 @@
 
   <PropertyGroup>
     <TargetFrameworks>netstandard2.1;net8.0</TargetFrameworks>
-    <Version>1.0.0</Version>
+    <!-- Version comes from MinVer (git tags) below, not a hardcoded property.-->
+    <MinVerTagPrefix>v</MinVerTagPrefix>
     <Authors>vojnar-autonomous</Authors>
     <Company>Vojnar Autonomous s.r.o.</Company>
     <RootNamespace>BulletSharp.Double</RootNamespace>
@@ -14,7 +15,7 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
 
     <Copyright>Portions Copyright (c) 2026 Vojnar Autonomous s.r.o.; see LICENSE for full third-party notices</Copyright>
-    <Description>Idiomatic, SWIG-like double-precision C# binding for the Bullet Physics Library (bullet3), compiled with USE_DOUBLE_PRECISION and closely following bullet3's own naming and conventions. Bundles native runtimes for win-x64 and linux-x64.
+    <Description>Idiomatic, SWIG-like double-precision C# binding for the Bullet Physics Library (bullet3), compiled with USE_DOUBLE_PRECISION and closely following bullet3's own naming and conventions. Bundles native runtimes for win-x64, win-arm64, linux-x64, linux-arm64, osx-x64 and osx-arm64.
 
 Covers collision shapes and algorithms, dynamics worlds and rigid bodies (including multithreaded variants), constraints, vehicle raycasting, the kinematic character controller, soft bodies and multibody dynamics, and .bullet world (de)serialization.
 
@@ -26,7 +27,7 @@ Derivative of BulletSharpPInvoke/libbulletc, wrapping Bullet Physics Library (bu
 - New: tools/verify_bindings, a binding-correctness checker across libbulletc, bullet3 and the C# API.
 - New: GitHub Actions CI building libbulletc from source and packaging native runtimes.
 - Numerous correctness fixes to the P/Invoke layer, including pre-existing bugs in upstream BulletSharpPInvoke, found via verify_bindings.
-- Native runtimes: win-x64, linux-x64.    </PackageReleaseNotes>
+- Native runtimes: win-x64, win-arm64, linux-x64, linux-arm64, osx-x64, osx-arm64.    </PackageReleaseNotes>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageTags>bullet;bullet-physics;physics;physics-engine;double;double-precision;pinvoke;simulation;robotics</PackageTags>
     <RepositoryUrl>https://github.com/vojnar-autonomous/bulletsharp.double</RepositoryUrl>
@@ -37,6 +38,12 @@ Derivative of BulletSharpPInvoke/libbulletc, wrapping Bullet Physics Library (bu
 
   <ItemGroup>
     <None Include="..\README.md" Pack="true" PackagePath="\" />
+    <None Include="..\LICENSE" Pack="true" PackagePath="\" />
+    <None Include="..\THIRD_PARTY_NOTICES.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="MinVer" Version="8.0.0" PrivateAssets="All" />
   </ItemGroup>
 
   <PropertyGroup Condition="'$(Configuration)'=='Debug'">
@@ -77,8 +84,12 @@ Derivative of BulletSharpPInvoke/libbulletc, wrapping Bullet Physics Library (bu
     <None Include="$(LibBulletCNativeFile)" Link="libbulletc$(LibBulletCNativeExt)" CopyToOutputDirectory="PreserveNewest" Visible="false" />
   </ItemGroup>
 
-  <Target Name="RequireNativeLibBulletC" BeforeTargets="Build" Condition="'$(TargetFramework)' == 'net8.0' and '$(LibBulletCNativeFile)' == ''">
-    <Error Text="libbulletc$(LibBulletCNativeExt) not found near '$(LibBulletCNativeDir)' or '$(LibBulletCNativeDirFlat)'. BulletSharp.Double needs a locally-built native libbulletc before it (or anything referencing it) can run. Build it: cmake -S ../libbulletc -B ../libbulletc/build  &amp;&amp;  cmake --build ../libbulletc/build --config $(Configuration). Or point LibBulletCNativeDir/LibBulletCNativeDirFlat at an existing build." />
+  <!-- SkipNativeLibBulletCCheck: this guard is about running/testing THIS
+       repo locally, which needs a sibling ../libbulletc/build. Dotnet pack
+       runs Build as a dependency too, but a pack-only checkout (like CI's
+       pack job) never has that local native build.. -->
+  <Target Name="RequireNativeLibBulletC" BeforeTargets="Build" Condition="'$(TargetFramework)' == 'net8.0' and '$(LibBulletCNativeFile)' == '' and '$(SkipNativeLibBulletCCheck)' != 'true'">
+    <Error Text="libbulletc$(LibBulletCNativeExt) not found near '$(LibBulletCNativeDir)' or '$(LibBulletCNativeDirFlat)'. BulletSharp.Double needs a locally-built native libbulletc before it (or anything referencing it) can run. Build it: cmake -S ../libbulletc -B ../libbulletc/build  &amp;&amp;  cmake --build ../libbulletc/build --config $(Configuration). Or point LibBulletCNativeDir/LibBulletCNativeDirFlat at an existing build. Or, if you're only packing (not running this repo locally), pass -p:SkipNativeLibBulletCCheck=true." />
   </Target>
 
   <!--
@@ -89,28 +100,51 @@ Derivative of BulletSharpPInvoke/libbulletc, wrapping Bullet Physics Library (bu
     runtimes/{rid}/native/ convention, which the SDK resolves automatically
     for consumers (no .targets file needed on their side).
 
-    These two files are gathered manually before packing (CI builds
-    linux-x64, your own machine builds win-x64); see
-    artifacts/runtimes/README.md for the exact steps. Override either path,
-    e.g.: dotnet pack -p:LibBulletCRuntimeLinuxX64=C:\path\to\libbulletc.so
+    All six files are gathered by CI (see .github/workflows/build-test-pack.yml's
+    pack job, or artifacts/runtimes/README.md for doing it by hand). Override
+    any path individually, e.g.: dotnet pack -p:LibBulletCRuntimeLinuxX64=C:\path\to\libbulletc.so
+
+    Deliberately NOT conditioned on '$(TargetFramework)' == 'net8.0' (unlike
+    LibBulletCNativeDir/Flat above, which legitimately needs to be TFM
+    specific): for a multi-targeted project, `dotnet pack` with no -f runs
+    Pack at the OUTER/dispatching project evaluation, where $(TargetFramework)
+    is empty, not net8.0, so a condition checking for net8.0 there is simply
+    never true. These Content items (and the matching Error-guard target
+    below) would then silently never apply, and the native binaries would
+    never make it into the package, with no error either. Same reasoning as
+    the unconditioned README.md item above, which is TFM-independent for
+    the same reason: the actual binaries are the same files regardless of
+    which TFM's assembly references them.
   -->
   <PropertyGroup>
     <LibBulletCRuntimeLinuxX64 Condition="'$(LibBulletCRuntimeLinuxX64)' == ''">$(MSBuildThisFileDirectory)..\artifacts\runtimes\linux-x64\native\libbulletc.so</LibBulletCRuntimeLinuxX64>
+    <LibBulletCRuntimeLinuxArm64 Condition="'$(LibBulletCRuntimeLinuxArm64)' == ''">$(MSBuildThisFileDirectory)..\artifacts\runtimes\linux-arm64\native\libbulletc.so</LibBulletCRuntimeLinuxArm64>
     <LibBulletCRuntimeWinX64 Condition="'$(LibBulletCRuntimeWinX64)' == ''">$(MSBuildThisFileDirectory)..\artifacts\runtimes\win-x64\native\libbulletc.dll</LibBulletCRuntimeWinX64>
+    <LibBulletCRuntimeWinArm64 Condition="'$(LibBulletCRuntimeWinArm64)' == ''">$(MSBuildThisFileDirectory)..\artifacts\runtimes\win-arm64\native\libbulletc.dll</LibBulletCRuntimeWinArm64>
+    <LibBulletCRuntimeOsxX64 Condition="'$(LibBulletCRuntimeOsxX64)' == ''">$(MSBuildThisFileDirectory)..\artifacts\runtimes\osx-x64\native\libbulletc.dylib</LibBulletCRuntimeOsxX64>
+    <LibBulletCRuntimeOsxArm64 Condition="'$(LibBulletCRuntimeOsxArm64)' == ''">$(MSBuildThisFileDirectory)..\artifacts\runtimes\osx-arm64\native\libbulletc.dylib</LibBulletCRuntimeOsxArm64>
   </PropertyGroup>
 
-  <ItemGroup Condition="'$(TargetFramework)' == 'net8.0'">
+  <ItemGroup>
     <Content Include="$(LibBulletCRuntimeLinuxX64)" Condition="Exists('$(LibBulletCRuntimeLinuxX64)')" Pack="true" PackagePath="runtimes/linux-x64/native/libbulletc.so" Visible="false" />
+    <Content Include="$(LibBulletCRuntimeLinuxArm64)" Condition="Exists('$(LibBulletCRuntimeLinuxArm64)')" Pack="true" PackagePath="runtimes/linux-arm64/native/libbulletc.so" Visible="false" />
     <Content Include="$(LibBulletCRuntimeWinX64)" Condition="Exists('$(LibBulletCRuntimeWinX64)')" Pack="true" PackagePath="runtimes/win-x64/native/libbulletc.dll" Visible="false" />
+    <Content Include="$(LibBulletCRuntimeWinArm64)" Condition="Exists('$(LibBulletCRuntimeWinArm64)')" Pack="true" PackagePath="runtimes/win-arm64/native/libbulletc.dll" Visible="false" />
+    <Content Include="$(LibBulletCRuntimeOsxX64)" Condition="Exists('$(LibBulletCRuntimeOsxX64)')" Pack="true" PackagePath="runtimes/osx-x64/native/libbulletc.dylib" Visible="false" />
+    <Content Include="$(LibBulletCRuntimeOsxArm64)" Condition="Exists('$(LibBulletCRuntimeOsxArm64)')" Pack="true" PackagePath="runtimes/osx-arm64/native/libbulletc.dylib" Visible="false" />
   </ItemGroup>
 
-  <!-- Fail the pack itself (not ordinary builds) if either RID's native
+  <!-- Fail the pack itself (not ordinary builds) if any RID's native
        binary is missing, so a package can't silently go out half-native;
        catching that only once someone hits a DllNotFoundException on the
        platform that was missing would be a much worse way to find out. -->
-  <Target Name="RequireNativeRuntimeAssetsForPack" BeforeTargets="Pack" Condition="'$(TargetFramework)' == 'net8.0'">
+  <Target Name="RequireNativeRuntimeAssetsForPack" BeforeTargets="Pack">
     <Error Condition="!Exists('$(LibBulletCRuntimeLinuxX64)')" Text="Packing needs a linux-x64 libbulletc.so at '$(LibBulletCRuntimeLinuxX64)' (or override -p:LibBulletCRuntimeLinuxX64=...). See artifacts/runtimes/README.md." />
+    <Error Condition="!Exists('$(LibBulletCRuntimeLinuxArm64)')" Text="Packing needs a linux-arm64 libbulletc.so at '$(LibBulletCRuntimeLinuxArm64)' (or override -p:LibBulletCRuntimeLinuxArm64=...). See artifacts/runtimes/README.md." />
     <Error Condition="!Exists('$(LibBulletCRuntimeWinX64)')" Text="Packing needs a win-x64 libbulletc.dll at '$(LibBulletCRuntimeWinX64)' (or override -p:LibBulletCRuntimeWinX64=...). See artifacts/runtimes/README.md." />
+    <Error Condition="!Exists('$(LibBulletCRuntimeWinArm64)')" Text="Packing needs a win-arm64 libbulletc.dll at '$(LibBulletCRuntimeWinArm64)' (or override -p:LibBulletCRuntimeWinArm64=...). See artifacts/runtimes/README.md." />
+    <Error Condition="!Exists('$(LibBulletCRuntimeOsxX64)')" Text="Packing needs an osx-x64 libbulletc.dylib at '$(LibBulletCRuntimeOsxX64)' (or override -p:LibBulletCRuntimeOsxX64=...). See artifacts/runtimes/README.md." />
+    <Error Condition="!Exists('$(LibBulletCRuntimeOsxArm64)')" Text="Packing needs an osx-arm64 libbulletc.dylib at '$(LibBulletCRuntimeOsxArm64)' (or override -p:LibBulletCRuntimeOsxArm64=...). See artifacts/runtimes/README.md." />
   </Target>
 
 </Project>

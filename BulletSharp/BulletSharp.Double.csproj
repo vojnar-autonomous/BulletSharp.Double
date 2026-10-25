@@ -13,7 +13,21 @@
     <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
     <Description>.NET double-precision wrapper for the Bullet physics engine</Description>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+
+    <!-- Packaging metadata. RepositoryUrl is set now so it's ready the
+         moment the repo goes public; nuget.org just shows a dead link
+         on the package page until then, it doesn't block publishing. -->
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageTags>bullet;bullet-physics;physics;physics-engine;double-precision;pinvoke;simulation;robotics</PackageTags>
+    <RepositoryUrl>https://github.com/vojnar-autonomous/bulletsharp.double</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
   </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="..\README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
 
   <PropertyGroup Condition="'$(Configuration)'=='Debug'">
     <DefineConstants>$(DefineConstants);BULLET_OBJECT_TRACKING</DefineConstants>
@@ -55,6 +69,42 @@
 
   <Target Name="RequireNativeLibBulletC" BeforeTargets="Build" Condition="'$(TargetFramework)' == 'net8.0' and '$(LibBulletCNativeFile)' == ''">
     <Error Text="libbulletc$(LibBulletCNativeExt) not found near '$(LibBulletCNativeDir)' or '$(LibBulletCNativeDirFlat)'. BulletSharp.Double needs a locally-built native libbulletc before it (or anything referencing it) can run. Build it: cmake -S ../libbulletc -B ../libbulletc/build  &amp;&amp;  cmake --build ../libbulletc/build --config $(Configuration). Or point LibBulletCNativeDir/LibBulletCNativeDirFlat at an existing build." />
+  </Target>
+
+  <!--
+    NuGet packaging of the native side. Unlike LibBulletCNativeDir/Flat above
+    (which are about running THIS repo locally), a published package has no
+    sibling ../libbulletc/build; the native binary for every supported RID
+    must ride inside the .nupkg itself, under the standard
+    runtimes/{rid}/native/ convention, which the SDK resolves automatically
+    for consumers (no .targets file needed on their side).
+
+    These two files are gathered manually before packing (CI builds
+    linux-x64, your own machine builds win-x64); see
+    artifacts/runtimes/README.md for the exact steps. Override either path,
+    e.g.: dotnet pack -p:LibBulletCRuntimeLinuxX64=C:\path\to\libbulletc.so
+  -->
+  <PropertyGroup>
+    <LibBulletCRuntimeLinuxX64 Condition="'$(LibBulletCRuntimeLinuxX64)' == ''">$(MSBuildThisFileDirectory)..\artifacts\runtimes\linux-x64\native\libbulletc.so</LibBulletCRuntimeLinuxX64>
+    <LibBulletCRuntimeWinX64 Condition="'$(LibBulletCRuntimeWinX64)' == ''">$(MSBuildThisFileDirectory)..\artifacts\runtimes\win-x64\native\libbulletc.dll</LibBulletCRuntimeWinX64>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(TargetFramework)' == 'net8.0'">
+    <Content Include="$(LibBulletCRuntimeLinuxX64)" Condition="Exists('$(LibBulletCRuntimeLinuxX64)')"
+             Pack="true" PackagePath="runtimes/linux-x64/native/libbulletc.so" Visible="false" />
+    <Content Include="$(LibBulletCRuntimeWinX64)" Condition="Exists('$(LibBulletCRuntimeWinX64)')"
+             Pack="true" PackagePath="runtimes/win-x64/native/libbulletc.dll" Visible="false" />
+  </ItemGroup>
+
+  <!-- Fail the pack itself (not ordinary builds) if either RID's native
+       binary is missing, so a package can't silently go out half-native;
+       catching that only once someone hits a DllNotFoundException on the
+       platform that was missing would be a much worse way to find out. -->
+  <Target Name="RequireNativeRuntimeAssetsForPack" BeforeTargets="Pack" Condition="'$(TargetFramework)' == 'net8.0'">
+    <Error Condition="!Exists('$(LibBulletCRuntimeLinuxX64)')"
+           Text="Packing needs a linux-x64 libbulletc.so at '$(LibBulletCRuntimeLinuxX64)' (or override -p:LibBulletCRuntimeLinuxX64=...). See artifacts/runtimes/README.md." />
+    <Error Condition="!Exists('$(LibBulletCRuntimeWinX64)')"
+           Text="Packing needs a win-x64 libbulletc.dll at '$(LibBulletCRuntimeWinX64)' (or override -p:LibBulletCRuntimeWinX64=...). See artifacts/runtimes/README.md." />
   </Target>
 
 </Project>

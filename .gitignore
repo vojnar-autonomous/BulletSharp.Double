@@ -4,7 +4,9 @@ packages
 *.suo
 *.user
 
-*.patch
+# Skip patches and diffs in root, if needed in future, change this
+/*.patch
+/*.diff
 
 # Visual Studio
 .vs/
@@ -16,5 +18,8 @@ build/
 CMakeCache.txt
 CMakeFiles/
 cmake_install.cmake
-/tools/verify_bindings/binding_report.html
-/tools/verify_bindings/binding_report.csv
+
+# Native binaries staged locally for `dotnet pack` (see artifacts/runtimes/README.md);
+# not committed, only ever gathered right before a release.
+/artifacts/runtimes/*/native/*
+!/artifacts/runtimes/*/native/.gitkeep

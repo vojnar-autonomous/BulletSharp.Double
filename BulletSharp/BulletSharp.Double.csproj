@@ -64,7 +64,7 @@ Derivative of BulletSharpPInvoke/libbulletc, wrapping Bullet Physics Library (bu
 
   <PropertyGroup Condition="'$(TargetFramework)' == 'net8.0'">
 
-    <LibBulletCNativeDir Condition="'$(LibBulletCNativeDir)' == ''">$(MSBuildThisFileDirectory)..\libbulletc\build\lib\$(Configuration)\</LibBulletCNativeDir>
+    <LibBulletCNativeDir Condition="'$(LibBulletCNativeDir)' == ''">$(MSBuildThisFileDirectory)..\libbulletc\build\$(Configuration)\</LibBulletCNativeDir>
     <LibBulletCNativeDirFlat Condition="'$(LibBulletCNativeDirFlat)' == ''">$(MSBuildThisFileDirectory)..\libbulletc\build\</LibBulletCNativeDirFlat>
 
     <LibBulletCNativeExt Condition="'$(LibBulletCNativeExt)' == '' and $([MSBuild]::IsOSPlatform('Windows'))">.dll</LibBulletCNativeExt>
